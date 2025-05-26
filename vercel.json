@@ -3,6 +3,10 @@
       {
         "source": "/api/:path*",
         "destination": "https://matesrace-backend.onrender.com/api/:path*"
+      },
+      {
+        "source": "/:path((?!api/|assets/|favicon.ico|trophy.svg|index.html|vite.svg|logo.png|static/).*)",
+        "destination": "/index.html"
       }
     ]
   }
