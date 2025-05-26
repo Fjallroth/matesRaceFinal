@@ -381,215 +381,241 @@ const RaceDetail: React.FC = () => {
             .filter(p => p.submittedRide && p.totalTime !== undefined);
 
         return (
-        <Card>
-            <CardHeader>
-                <CardTitle>{title}</CardTitle>
-                    <CardDescription>
-                    {shouldMaskTimesGlobal && !isOrganizer && "Times are hidden until the race finishes or by organizer's choice. You can see your own time."}
-                    {isOrganizer && race?.hideLeaderboardUntilFinish && !raceFinished && " (Organizer View: Times visible)"}
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-            {filteredForLeaderboard.length > 0 ? (
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Rank</TableHead>
-                            <TableHead>Rider</TableHead>
-                            {displaySegments.map(segment => (<TableHead key={segment.id} className="text-xs whitespace-nowrap hidden md:table-cell">{segment.name.length > 20 ? segment.name.substring(0,17) + "..." : segment.name}</TableHead>))}
-                            <TableHead className="text-right">Total Time</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredForLeaderboard
-                        .sort((a, b) => {
-                            const aCompletedAll = displaySegments.every(seg => a.segmentTimes?.[seg.id.toString()] !== undefined && a.segmentTimes?.[seg.id.toString()] !== null);
-                            const bCompletedAll = displaySegments.every(seg => b.segmentTimes?.[seg.id.toString()] !== undefined && b.segmentTimes?.[seg.id.toString()] !== null);
-
-                            if (aCompletedAll && !bCompletedAll) return -1;
-                            if (!aCompletedAll && bCompletedAll) return 1;
-                            if (!aCompletedAll && !bCompletedAll) return 0;
-
-                            const aTime = a.totalTime === null ? Infinity : (a.totalTime ?? Infinity);
-                            const bTime = b.totalTime === null ? Infinity : (b.totalTime ?? Infinity);
-                            return aTime - bTime;
-                        })
-                        .map((participant, index) => {
-                            const isCurrentViewingParticipant = participant.user.stravaId.toString() === currentUser?.stravaId;
-                            const showThisParticipantTimes = isOrganizer || !shouldMaskTimesGlobal || isCurrentViewingParticipant;
-                            const participantCompletedAllSegments = displaySegments.every(seg => participant.segmentTimes?.[seg.id.toString()] !== undefined && participant.segmentTimes?.[seg.id.toString()] !== null);
-
-                            return (
-                            <TableRow key={participant.id} className={isCurrentViewingParticipant ? "bg-accent/80" : ""}>
-                                <TableCell className="font-semibold">
-                                    {participantCompletedAllSegments && participant.totalTime !== undefined ? index + 1 : "DNF"}
-                                </TableCell>
-                                <TableCell>
-                                <div className="flex items-center">
-                                    <Avatar className="h-6 w-6 mr-2">
-                                    <AvatarImage src={participant.profileImage || undefined} alt={participant.name} />
-                                    <AvatarFallback>{participant.name?.charAt(0)?.toUpperCase() || 'P'}</AvatarFallback>
-                                    </Avatar>
-                                    <span className="whitespace-nowrap">{participant.name}</span>
-                                    {isCurrentViewingParticipant && <Badge variant="outline" className="ml-2 text-xs">You</Badge>}
-                                </div>
-                                </TableCell>
-                                {displaySegments.map(segment => (
-                                <TableCell key={`${participant.id}-${segment.id}`} className="hidden md:table-cell">
-                                    {showThisParticipantTimes && participantCompletedAllSegments ? formatTime(participant.segmentTimes?.[segment.id.toString()]) : (participantCompletedAllSegments ? "Hidden" : "-")}
-                                </TableCell>
-                                ))}
-                                <TableCell className="font-medium text-right">
-                                {participantCompletedAllSegments
-                                    ? (showThisParticipantTimes ? formatTime(participant.totalTime) : "Hidden")
-                                    : 'DNF'}
-                                </TableCell>
-                            </TableRow>
-                            );
-                        })}
-                    </TableBody>
-                </Table>
-            ) : (
-                <div className="text-center py-10">
-                <p className="text-muted-foreground mb-4">No results yet for this category. Leaderboard populates after submissions.</p>
-                {currentStatus === "ongoing" && !hasSubmitted && isAuthenticated && (<Button onClick={handleOpenSubmitRideDialog}>Submit Your Activity</Button>)}
-                </div>
-            )}
-            </CardContent>
-        </Card>
-        );
-    };
-
-    const currentUserParticipant = leaderboardParticipants.find(p => p.user.stravaId.toString() === currentUser?.stravaId);
-    const hasSubmitted = currentUserParticipant?.submittedRide || false;
-
-    if (isAuthLoading || (isLoading && !race)) {
-        return <div className="flex items-center justify-center h-screen bg-background"><div className="text-center"><Loader2 className="animate-spin h-12 w-12 text-primary mx-auto" /><p className="mt-4 text-muted-foreground">Loading race details...</p></div></div>;
-    }
-    if (error) {
-        return <div className="container mx-auto p-4 flex flex-col items-center justify-center min-h-screen"><AlertTriangle className="h-16 w-16 text-red-500 mb-4" /><h2 className="text-2xl font-semibold mb-2">Error Loading Race</h2><p className="text-red-600 mb-6 text-center">{error}</p><div className="flex gap-2"><Button onClick={() => fetchRaceDetails()} className="mr-2">Try Again</Button><Button variant="outline" onClick={() => navigate('/my-races')}>Go Home</Button></div></div>;
-    }
-    if (!race) {
-        return <div className="container mx-auto p-4 flex flex-col items-center justify-center min-h-screen"><AlertCircle className="h-16 w-16 text-yellow-500 mb-4" /><CardTitle className="text-2xl mb-2">Race Not Found</CardTitle><CardDescription className="mb-6">The race (ID: {raceId}) might not exist.</CardDescription><Button onClick={() => navigate('/my-races')}>Go Home</Button></div>;
-    }
-
-    const currentStatus = getRaceStatus(race.startDate, race.endDate);
-    const maleParticipants = leaderboardParticipants.filter(p => p.userSex === 'M');
-    const femaleParticipants = leaderboardParticipants.filter(p => p.userSex === 'F');
-    const otherParticipants = leaderboardParticipants.filter(p => p.userSex !== 'M' && p.userSex !== 'F');
-
-  return (
-    <div className="container mx-auto py-6 px-4 md:px-6 bg-background">
-        <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between">
-            <div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-1">{race.raceName}</h1>
-            <div className="flex items-center text-muted-foreground text-sm flex-wrap gap-x-2 gap-y-1">
-                <Avatar className="h-6 w-6 mr-1">
-                <AvatarImage src={race.organiser.userStravaPic || undefined} alt={race.organiser.displayName || 'Org'} />
-                <AvatarFallback>{(race.organiser.displayName || 'O')[0]}</AvatarFallback>
-                </Avatar>
-                <span>Organized by {race.organiser.displayName || `User ${race.organiser.stravaId}`}</span>
-                {race.isPrivate && <Badge variant="outline" className="text-xs">Private</Badge>}
-                {race.hideLeaderboardUntilFinish && !raceFinished && (
-                <Badge variant="outline" className="text-xs border-orange-500 text-orange-500">
-                    <EyeOff className="h-3 w-3 mr-1" /> Leaderboard Hidden
-                </Badge>
-                )}
-                {race.useSexCategories && (
-                    <Badge variant="outline" className="text-xs border-purple-500 text-purple-500">
-                    <Users className="h-3 w-3 mr-1" /> Sex Categories
-                </Badge>
-                )}
-            </div>
-            </div>
-            <div className="mt-4 md:mt-0 flex flex-col md:items-end space-y-1">
-            <div className="flex items-center">
-                {getStatusBadge(currentStatus)}
-                <span className="ml-2 text-muted-foreground text-sm">
-                    {formatDate(currentStatus === "not_started" ? race.startDate : race.endDate)}
-                </span>
-            </div>
-                {isOrganizer && (
-                <div className="flex space-x-2 mt-2">
-                <Link to={`/edit-race/${race.id}`}>
-                    <Button variant="outline" size="sm"><Edit3 className="mr-1.5 h-4 w-4" /> Edit</Button>
-                </Link>
-                    <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm"><Trash2 className="mr-1.5 h-4 w-4" /> Delete</Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                    <AlertDialogHeader><AlertDialogTitle>Delete Race: {race.raceName}?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteRace} className="bg-red-600 hover:bg-red-700">Confirm Delete</AlertDialogAction></AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-                </div>
-            )}
-            </div>
-        </div>
-        </div>
-        <div className="flex flex-wrap gap-3 mb-6">
-            <Button variant="outline" onClick={() => navigate("/my-races")}>Back to My Races</Button>
-            {currentStatus === "ongoing" && isAuthenticated && (<Button onClick={handleOpenSubmitRideDialog}>{hasSubmitted ? "Update Submission" : "Submit Activity"}</Button>)}
-        </div>
-
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="mb-6 grid w-full grid-cols-2 md:grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="segments">Segments</TabsTrigger>
-          <TabsTrigger value="participants">Participants ({leaderboardParticipants.length})</TabsTrigger>
-          <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
           <Card>
-            <CardHeader><CardTitle>Race Details</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              {race.raceInfo && (
-                <div className="flex items-start">
-                    <Info className="mr-3 mt-1 text-muted-foreground flex-shrink-0" size={18} />
-                    <div>
-                        <p className="text-sm font-medium">Description</p>
-                        <p className="text-muted-foreground whitespace-pre-wrap">{race.raceInfo}</p>
-                    </div>
-                </div>
+          <CardHeader>
+              <CardTitle>{title}</CardTitle>
+                  <CardDescription>
+                  {shouldMaskTimesGlobal && !isOrganizer && "Times are hidden until the race finishes or by organizer's choice. You can see your own time."}
+                  {isOrganizer && race?.hideLeaderboardUntilFinish && !raceFinished && " (Organizer View: Times visible)"}
+              </CardDescription>
+          </CardHeader>
+          <CardContent className="overflow-x-auto"> {/* ADDED overflow-x-auto HERE */}
+          {filteredForLeaderboard.length > 0 ? (
+              <Table className="text-xs sm:text-sm"> {/* ADDED text-xs sm:text-sm for smaller base text */}
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead className="whitespace-nowrap">Rank</TableHead>
+                          <TableHead className="whitespace-nowrap">Rider</TableHead>
+                          {/* MODIFIED: Removed hidden md:table-cell, added whitespace-nowrap for all segment headers */}
+                          {displaySegments.map(segment => (<TableHead key={segment.id} className="whitespace-nowrap px-2">{segment.name.length > 20 ? segment.name.substring(0,17) + "..." : segment.name}</TableHead>))}
+                          <TableHead className="text-right whitespace-nowrap">Total Time</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {filteredForLeaderboard
+                      .sort((a, b) => {
+                          const aCompletedAll = displaySegments.every(seg => a.segmentTimes?.[seg.id.toString()] !== undefined && a.segmentTimes?.[seg.id.toString()] !== null);
+                          const bCompletedAll = displaySegments.every(seg => b.segmentTimes?.[seg.id.toString()] !== undefined && b.segmentTimes?.[seg.id.toString()] !== null);
+
+                          if (aCompletedAll && !bCompletedAll) return -1;
+                          if (!aCompletedAll && bCompletedAll) return 1;
+                          if (!aCompletedAll && !bCompletedAll) return 0; // Keep original order if neither completed all
+
+                          const aTime = a.totalTime === null ? Infinity : (a.totalTime ?? Infinity);
+                          const bTime = b.totalTime === null ? Infinity : (b.totalTime ?? Infinity);
+                          return aTime - bTime;
+                      })
+                      .map((participant, index) => {
+                          const isCurrentViewingParticipant = participant.user.stravaId.toString() === currentUser?.stravaId;
+                          const showThisParticipantTimes = isOrganizer || !shouldMaskTimesGlobal || isCurrentViewingParticipant;
+                          const participantCompletedAllSegments = displaySegments.every(seg => participant.segmentTimes?.[seg.id.toString()] !== undefined && participant.segmentTimes?.[seg.id.toString()] !== null);
+
+                          return (
+                          <TableRow key={participant.id} className={isCurrentViewingParticipant ? "bg-accent/80" : ""}>
+                              <TableCell className="font-semibold whitespace-nowrap">
+                                  {participantCompletedAllSegments && participant.totalTime !== undefined ? index + 1 : "DNF"}
+                              </TableCell>
+                              <TableCell>
+                              <div className="flex items-center">
+                                  <Avatar className="h-6 w-6 mr-2 flex-shrink-0"> {/* Added flex-shrink-0 */}
+                                  <AvatarImage src={participant.profileImage || undefined} alt={participant.name} />
+                                  <AvatarFallback>{participant.name?.charAt(0)?.toUpperCase() || 'P'}</AvatarFallback>
+                                  </Avatar>
+                                  <span className="whitespace-nowrap">{participant.name}</span>
+                                  {isCurrentViewingParticipant && <Badge variant="outline" className="ml-2 text-xs whitespace-nowrap">You</Badge>}
+                              </div>
+                              </TableCell>
+                              {/* MODIFIED: Removed hidden md:table-cell, added whitespace-nowrap */}
+                              {displaySegments.map(segment => (
+                              <TableCell key={`${participant.id}-${segment.id}`} className="whitespace-nowrap px-2">
+                                  {showThisParticipantTimes && participantCompletedAllSegments ? formatTime(participant.segmentTimes?.[segment.id.toString()]) : (participantCompletedAllSegments ? "Hidden" : "-")}
+                              </TableCell>
+                              ))}
+                              <TableCell className="font-medium text-right whitespace-nowrap">
+                              {participantCompletedAllSegments
+                                  ? (showThisParticipantTimes ? formatTime(participant.totalTime) : "Hidden")
+                                  : 'DNF'}
+                              </TableCell>
+                          </TableRow>
+                          );
+                      })}
+                  </TableBody>
+              </Table>
+          ) : (
+              <div className="text-center py-10">
+              <p className="text-muted-foreground mb-4">No results yet for this category. Leaderboard populates after submissions.</p>
+              {currentStatus === "ongoing" && !hasSubmitted && isAuthenticated && (<Button onClick={handleOpenSubmitRideDialog}>Submit Your Activity</Button>)}
+              </div>
+          )}
+          </CardContent>
+      </Card>
+      );
+  };
+
+  const currentUserParticipant = leaderboardParticipants.find(p => p.user.stravaId.toString() === currentUser?.stravaId);
+  const hasSubmitted = currentUserParticipant?.submittedRide || false;
+
+  if (isAuthLoading || (isLoading && !race)) {
+      return <div className="flex items-center justify-center h-screen bg-background"><div className="text-center"><Loader2 className="animate-spin h-12 w-12 text-primary mx-auto" /><p className="mt-4 text-muted-foreground">Loading race details...</p></div></div>;
+  }
+  if (error) {
+      return <div className="container mx-auto p-4 flex flex-col items-center justify-center min-h-screen"><AlertTriangle className="h-16 w-16 text-red-500 mb-4" /><h2 className="text-2xl font-semibold mb-2">Error Loading Race</h2><p className="text-red-600 mb-6 text-center">{error}</p><div className="flex gap-2"><Button onClick={() => fetchRaceDetails()} className="mr-2">Try Again</Button><Button variant="outline" onClick={() => navigate('/my-races')}>Go Home</Button></div></div>;
+  }
+  if (!race) {
+      return <div className="container mx-auto p-4 flex flex-col items-center justify-center min-h-screen"><AlertCircle className="h-16 w-16 text-yellow-500 mb-4" /><CardTitle className="text-2xl mb-2">Race Not Found</CardTitle><CardDescription className="mb-6">The race (ID: {raceId}) might not exist.</CardDescription><Button onClick={() => navigate('/my-races')}>Go Home</Button></div>;
+  }
+
+  const currentStatus = getRaceStatus(race.startDate, race.endDate);
+  const maleParticipants = leaderboardParticipants.filter(p => p.userSex === 'M');
+  const femaleParticipants = leaderboardParticipants.filter(p => p.userSex === 'F');
+  const otherParticipants = leaderboardParticipants.filter(p => p.userSex !== 'M' && p.userSex !== 'F');
+
+return (
+  <div className="container mx-auto py-6 px-4 md:px-6 bg-background">
+      <div className="mb-6">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between">
+          <div>
+          <h1 className="text-2xl md:text-3xl font-bold mb-1">{race.raceName}</h1>
+          <div className="flex items-center text-muted-foreground text-sm flex-wrap gap-x-2 gap-y-1">
+              <Avatar className="h-6 w-6 mr-1">
+              <AvatarImage src={race.organiser.userStravaPic || undefined} alt={race.organiser.displayName || 'Org'} />
+              <AvatarFallback>{(race.organiser.displayName || 'O')[0]}</AvatarFallback>
+              </Avatar>
+              <span>Organized by {race.organiser.displayName || `User ${race.organiser.stravaId}`}</span>
+              {race.isPrivate && <Badge variant="outline" className="text-xs">Private</Badge>}
+              {race.hideLeaderboardUntilFinish && !raceFinished && (
+              <Badge variant="outline" className="text-xs border-orange-500 text-orange-500">
+                  <EyeOff className="h-3 w-3 mr-1" /> Leaderboard Hidden
+              </Badge>
               )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                <div className="flex items-center"><Calendar className="mr-2 text-muted-foreground" size={18} /><div><p className="text-sm font-medium">Start Date</p><p className="text-muted-foreground">{formatDate(race.startDate)}</p></div></div>
-                <div className="flex items-center"><Calendar className="mr-2 text-muted-foreground" size={18} /><div><p className="text-sm font-medium">End Date</p><p className="text-muted-foreground">{formatDate(race.endDate)}</p></div></div>
-                <div className="flex items-center"><Trophy className="mr-2 text-muted-foreground" size={18} /><div><p className="text-sm font-medium">Status</p>{getStatusBadge(currentStatus)}</div></div>
-                <div className="flex items-center"><Users className="mr-2 text-muted-foreground" size={18} /><div><p className="text-sm font-medium">Participants</p><p className="text-muted-foreground">{race.participantCount || 0}</p></div></div>
-                <div className="flex items-center"><ListChecks className="mr-2 text-muted-foreground" size={18}/><div><p className="text-sm font-medium">Segments</p><p className="text-muted-foreground">{race.segmentIds.length}</p></div></div>
-                <div className="flex items-center"><Users className="mr-2 text-muted-foreground" size={18}/><div><p className="text-sm font-medium">Privacy</p><p className="text-muted-foreground">{race.isPrivate ? "Private" : "Public"}</p></div></div>
-                <div className="flex items-center">
-                    {race.hideLeaderboardUntilFinish ? <EyeOff className="mr-2 text-muted-foreground" size={18}/> : <Eye className="mr-2 text-muted-foreground" size={18}/>}
-                    <div><p className="text-sm font-medium">Leaderboard Visibility</p><p className="text-muted-foreground">{race.hideLeaderboardUntilFinish ? "Hidden until race finish" : "Always Visible"}</p></div>
-                </div>
-                 <div className="flex items-center">
-                    {race.useSexCategories ? <Users className="mr-2 text-muted-foreground" size={18}/> : <Zap className="mr-2 text-muted-foreground" size={18}/>}
-                    <div><p className="text-sm font-medium">Categorization</p><p className="text-muted-foreground">{race.useSexCategories ? "Sex-based leaderboards" : "Overall leaderboard"}</p></div>
+              {race.useSexCategories && (
+                  <Badge variant="outline" className="text-xs border-purple-500 text-purple-500">
+                  <Users className="h-3 w-3 mr-1" /> Sex Categories
+              </Badge>
+              )}
+          </div>
+          </div>
+          <div className="mt-4 md:mt-0 flex flex-col md:items-end space-y-1">
+          <div className="flex items-center">
+              {getStatusBadge(currentStatus)}
+              <span className="ml-2 text-muted-foreground text-sm">
+                  {formatDate(currentStatus === "not_started" ? race.startDate : race.endDate)}
+              </span>
+          </div>
+              {isOrganizer && (
+              <div className="flex space-x-2 mt-2">
+              <Link to={`/edit-race/${race.id}`}>
+                  <Button variant="outline" size="sm"><Edit3 className="mr-1.5 h-4 w-4" /> Edit</Button>
+              </Link>
+                  <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm"><Trash2 className="mr-1.5 h-4 w-4" /> Delete</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                  <AlertDialogHeader><AlertDialogTitle>Delete Race: {race.raceName}?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                  <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteRace} className="bg-red-600 hover:bg-red-700">Confirm Delete</AlertDialogAction></AlertDialogFooter>
+                  </AlertDialogContent>
+              </AlertDialog>
+              </div>
+          )}
+          </div>
+      </div>
+      </div>
+      <div className="flex flex-wrap gap-3 mb-6">
+          <Button variant="outline" onClick={() => navigate("/my-races")}>Back to My Races</Button>
+          {currentStatus === "ongoing" && isAuthenticated && (<Button onClick={handleOpenSubmitRideDialog}>{hasSubmitted ? "Update Submission" : "Submit Activity"}</Button>)}
+      </div>
+
+    <Tabs defaultValue="overview" className="w-full">
+      <TabsList className="mb-6 grid w-full grid-cols-2 md:grid-cols-4">
+        <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsTrigger value="segments">Segments</TabsTrigger>
+        <TabsTrigger value="participants">Participants ({leaderboardParticipants.length})</TabsTrigger>
+        <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="overview" className="space-y-6">
+        <Card>
+          <CardHeader><CardTitle>Race Details</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            {race.raceInfo && (
+              <div className="flex items-start">
+                  <Info className="mr-3 mt-1 text-muted-foreground flex-shrink-0" size={18} />
+                  <div>
+                      <p className="text-sm font-medium">Description</p>
+                      <p className="text-muted-foreground whitespace-pre-wrap">{race.raceInfo}</p>
                   </div>
               </div>
-              {isOrganizer && (
-  <div className="mt-6 pt-6 border-t">
-    <h3 className="text-lg font-semibold mb-4">Share Race (Organizer Info)</h3>
-    <div className="space-y-4">
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+              <div className="flex items-center"><Calendar className="mr-2 text-muted-foreground" size={18} /><div><p className="text-sm font-medium">Start Date</p><p className="text-muted-foreground">{formatDate(race.startDate)}</p></div></div>
+              <div className="flex items-center"><Calendar className="mr-2 text-muted-foreground" size={18} /><div><p className="text-sm font-medium">End Date</p><p className="text-muted-foreground">{formatDate(race.endDate)}</p></div></div>
+              <div className="flex items-center"><Trophy className="mr-2 text-muted-foreground" size={18} /><div><p className="text-sm font-medium">Status</p>{getStatusBadge(currentStatus)}</div></div>
+              <div className="flex items-center"><Users className="mr-2 text-muted-foreground" size={18} /><div><p className="text-sm font-medium">Participants</p><p className="text-muted-foreground">{race.participantCount || 0}</p></div></div>
+              <div className="flex items-center"><ListChecks className="mr-2 text-muted-foreground" size={18}/><div><p className="text-sm font-medium">Segments</p><p className="text-muted-foreground">{race.segmentIds.length}</p></div></div>
+              <div className="flex items-center"><Users className="mr-2 text-muted-foreground" size={18}/><div><p className="text-sm font-medium">Privacy</p><p className="text-muted-foreground">{race.isPrivate ? "Private" : "Public"}</p></div></div>
+              <div className="flex items-center">
+                  {race.hideLeaderboardUntilFinish ? <EyeOff className="mr-2 text-muted-foreground" size={18}/> : <Eye className="mr-2 text-muted-foreground" size={18}/>}
+                  <div><p className="text-sm font-medium">Leaderboard Visibility</p><p className="text-muted-foreground">{race.hideLeaderboardUntilFinish ? "Hidden until race finish" : "Always Visible"}</p></div>
+              </div>
+               <div className="flex items-center">
+                  {race.useSexCategories ? <Users className="mr-2 text-muted-foreground" size={18}/> : <Zap className="mr-2 text-muted-foreground" size={18}/>}
+                  <div><p className="text-sm font-medium">Categorization</p><p className="text-muted-foreground">{race.useSexCategories ? "Sex-based leaderboards" : "Overall leaderboard"}</p></div>
+                </div>
+            </div>
+            {isOrganizer && (
+<div className="mt-6 pt-6 border-t">
+  <h3 className="text-lg font-semibold mb-4">Share Race (Organizer Info)</h3>
+  <div className="space-y-4">
+    <div className="flex items-start">
+      <Info className="mr-3 mt-1 text-muted-foreground flex-shrink-0" size={18} />
+      <div>
+        <p className="text-sm font-medium">Race ID</p>
+        <div className="flex items-center gap-2">
+          <p className="text-muted-foreground font-mono bg-muted px-2 py-1 rounded text-sm inline-block">
+            {race.id}
+          </p>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => {
+              navigator.clipboard.writeText(race.id.toString());
+              toast({ title: "Race ID Copied!" });
+            }}
+          >
+            <Copy size={14} />
+          </Button>
+        </div>
+      </div>
+    </div>
+
+    {race.password && (
       <div className="flex items-start">
-        <Info className="mr-3 mt-1 text-muted-foreground flex-shrink-0" size={18} />
+        <KeyRound className="mr-3 mt-1 text-muted-foreground flex-shrink-0" size={18} />
         <div>
-          <p className="text-sm font-medium">Race ID</p>
+          <p className="text-sm font-medium">Race Password</p>
           <div className="flex items-center gap-2">
-            <p className="text-muted-foreground font-mono bg-muted px-2 py-1 rounded text-sm inline-block">
-              {race.id}
+             <p className="text-muted-foreground font-mono bg-muted px-2 py-1 rounded text-sm inline-block">
+              {race.password}
             </p>
             <Button
               variant="ghost"
               size="icon"
               className="h-7 w-7"
               onClick={() => {
-                navigator.clipboard.writeText(race.id.toString());
-                toast({ title: "Race ID Copied!" });
+                navigator.clipboard.writeText(race.password!);
+                toast({ title: "Password Copied!" });
               }}
             >
               <Copy size={14} />
@@ -597,211 +623,187 @@ const RaceDetail: React.FC = () => {
           </div>
         </div>
       </div>
+    )}
 
-      {race.password && (
-        <div className="flex items-start">
-          <KeyRound className="mr-3 mt-1 text-muted-foreground flex-shrink-0" size={18} />
-          <div>
-            <p className="text-sm font-medium">Race Password</p>
-            <div className="flex items-center gap-2">
-               <p className="text-muted-foreground font-mono bg-muted px-2 py-1 rounded text-sm inline-block">
-                {race.password}
-              </p>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => {
-                  navigator.clipboard.writeText(race.password!);
-                  toast({ title: "Password Copied!" });
-                }}
-              >
-                <Copy size={14} />
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="flex items-start">
-        <Share2 className="mr-3 mt-1 text-muted-foreground flex-shrink-0" size={18} />
-        <div>
-          <p className="text-sm font-medium">How to Share</p>
-          <p className="text-muted-foreground text-xs">
-            Participants can join by clicking "Join Race" on their dashboard and entering the Race ID and Password.
-          </p>
-          <p className="text-muted-foreground text-xs mt-1">
-            Share this page URL:
-          </p>
-          <div className="flex items-center gap-2 mt-1">
-            <code className="text-xs bg-muted px-2 py-1 rounded break-all">
-              {window.location.href}
-            </code>
-            <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => {
-                    navigator.clipboard.writeText(window.location.href);
-                    toast({ title: "URL Copied!" });
-                }}
-            >
-                <Copy size={14} />
-            </Button>
-          </div>
+    <div className="flex items-start">
+      <Share2 className="mr-3 mt-1 text-muted-foreground flex-shrink-0" size={18} />
+      <div>
+        <p className="text-sm font-medium">How to Share</p>
+        <p className="text-muted-foreground text-xs">
+          Participants can join by clicking "Join Race" on their dashboard and entering the Race ID and Password.
+        </p>
+        <p className="text-muted-foreground text-xs mt-1">
+          Share this page URL:
+        </p>
+        <div className="flex items-center gap-2 mt-1">
+          <code className="text-xs bg-muted px-2 py-1 rounded break-all">
+            {window.location.href}
+          </code>
+          <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  toast({ title: "URL Copied!" });
+              }}
+          >
+              <Copy size={14} />
+          </Button>
         </div>
       </div>
     </div>
   </div>
+</div>
 )}
-            </CardContent>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="segments">
+          <Card>
+          <CardHeader><CardTitle>Race Segments</CardTitle><CardDescription>Complete these Strava segments during the race.</CardDescription></CardHeader>
+          <CardContent>
+              {displaySegments.length > 0 ? (
+              <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead>Segment Name</TableHead>
+                          <TableHead className="text-right">View</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {displaySegments.map((segment) => (
+                      <TableRow key={segment.id}>
+                          <TableCell className="font-medium">{segment.name}</TableCell>
+                          <TableCell className="text-right">
+                              <Button asChild variant="ghost" size="sm">
+                                  <a href={segment.url} target="_blank" rel="noopener noreferrer">
+                                  Strava <ExternalLink size={14} className="ml-1"/>
+                                  </a>
+                              </Button>
+                          </TableCell>
+                      </TableRow>
+                      ))}
+                  </TableBody>
+              </Table>
+              ) : (
+              <p className="text-muted-foreground p-4 text-center">No segments for this race.</p>
+              )}
+          </CardContent>
           </Card>
-        </TabsContent>
+      </TabsContent>
+      <TabsContent value="participants">
+          <Card>
+          <CardHeader><CardTitle>Participants</CardTitle><CardDescription>{leaderboardParticipants.length} registered.</CardDescription></CardHeader>
+          <CardContent>
+              {leaderboardParticipants.length > 0 ? (
+              <div className="space-y-3">
+                  {leaderboardParticipants.map((participant) => {
+                  const isCurrentParticipant = participant.user.stravaId.toString() === currentUser?.stravaId;
+                  const showTimeForThisParticipant = isOrganizer || !shouldMaskTimesGlobal || isCurrentParticipant;
+                  const completedAllSegments = displaySegments.every(seg => participant.segmentTimes?.[seg.id.toString()] !== undefined && participant.segmentTimes?.[seg.id.toString()] !== null);
 
-        <TabsContent value="segments">
-            <Card>
-            <CardHeader><CardTitle>Race Segments</CardTitle><CardDescription>Complete these Strava segments during the race.</CardDescription></CardHeader>
-            <CardContent>
-                {displaySegments.length > 0 ? (
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Segment Name</TableHead>
-                            <TableHead className="text-right">View</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {displaySegments.map((segment) => (
-                        <TableRow key={segment.id}>
-                            <TableCell className="font-medium">{segment.name}</TableCell>
-                            <TableCell className="text-right">
-                                <Button asChild variant="ghost" size="sm">
-                                    <a href={segment.url} target="_blank" rel="noopener noreferrer">
-                                    Strava <ExternalLink size={14} className="ml-1"/>
-                                    </a>
-                                </Button>
-                            </TableCell>
-                        </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-                ) : (
-                <p className="text-muted-foreground p-4 text-center">No segments for this race.</p>
-                )}
-            </CardContent>
-            </Card>
-        </TabsContent>
-        <TabsContent value="participants">
-            <Card>
-            <CardHeader><CardTitle>Participants</CardTitle><CardDescription>{leaderboardParticipants.length} registered.</CardDescription></CardHeader>
-            <CardContent>
-                {leaderboardParticipants.length > 0 ? (
-                <div className="space-y-3">
-                    {leaderboardParticipants.map((participant) => {
-                    const isCurrentParticipant = participant.user.stravaId.toString() === currentUser?.stravaId;
-                    const showTimeForThisParticipant = isOrganizer || !shouldMaskTimesGlobal || isCurrentParticipant;
-                    const completedAllSegments = displaySegments.every(seg => participant.segmentTimes?.[seg.id.toString()] !== undefined && participant.segmentTimes?.[seg.id.toString()] !== null);
+                  return (
+                  <div key={participant.id} className="flex items-center justify-between p-3 border rounded-md hover:bg-accent/50 transition-colors">
+                      <div className="flex items-center">
+                      <Avatar className="h-10 w-10 mr-3">
+                          <AvatarImage src={participant.profileImage || undefined} alt={participant.name} />
+                          <AvatarFallback>{participant.name?.charAt(0)?.toUpperCase() || 'P'}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                          <p className="font-medium">{participant.name} ({participant.userSex || 'N/A'})</p>
+                          <p className={`text-xs ${participant.submittedRide ? 'text-green-600' : 'text-muted-foreground'}`}>
+                              {participant.submittedRide ? `Submitted (ID: ${participant.submittedActivityId || 'N/A'})` : "No submission yet"}
+                          </p>
+                      </div>
+                      </div>
+                      {isOrganizer  && (
+                      <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                              </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                              <AlertDialogHeader>
+                                  <AlertDialogTitle>Remove {participant.name}?</AlertDialogTitle>
+                                  <AlertDialogDescription> This will remove {participant.name} from the race. This action cannot be undone. </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteParticipant(participant.id)} className="bg-red-600 hover:bg-red-700"> Confirm Remove </AlertDialogAction>
+                              </AlertDialogFooter>
+                          </AlertDialogContent>
+                      </AlertDialog>
+                      )}
+                      {participant.submittedRide && participant.totalTime !== undefined && (
+                              <div className="text-right">
+                              <p className="font-semibold text-sm">
+                                  {showTimeForThisParticipant && completedAllSegments ? formatTime(participant.totalTime) : (shouldMaskTimesGlobal && completedAllSegments ? "Hidden" : (completedAllSegments ? formatTime(participant.totalTime) : "DNF"))}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Total Time</p>
+                          </div>
+                      )}
+                  </div>
+                  );
+                  })}
+              </div>
+              ) : ( <p className="text-muted-foreground p-4 text-center">No participants yet.</p> )}
+          </CardContent>
+          </Card>
+      </TabsContent>
 
-                    return (
-                    <div key={participant.id} className="flex items-center justify-between p-3 border rounded-md hover:bg-accent/50 transition-colors">
-                        <div className="flex items-center">
-                        <Avatar className="h-10 w-10 mr-3">
-                            <AvatarImage src={participant.profileImage || undefined} alt={participant.name} />
-                            <AvatarFallback>{participant.name?.charAt(0)?.toUpperCase() || 'P'}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                            <p className="font-medium">{participant.name} ({participant.userSex || 'N/A'})</p>
-                            <p className={`text-xs ${participant.submittedRide ? 'text-green-600' : 'text-muted-foreground'}`}>
-                                {participant.submittedRide ? `Submitted (ID: ${participant.submittedActivityId || 'N/A'})` : "No submission yet"}
-                            </p>
-                        </div>
-                        </div>
-                        {isOrganizer  && (
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Remove {participant.name}?</AlertDialogTitle>
-                                    <AlertDialogDescription> This will remove {participant.name} from the race. This action cannot be undone. </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteParticipant(participant.id)} className="bg-red-600 hover:bg-red-700"> Confirm Remove </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                        )}
-                        {participant.submittedRide && participant.totalTime !== undefined && (
-                                <div className="text-right">
-                                <p className="font-semibold text-sm">
-                                    {showTimeForThisParticipant && completedAllSegments ? formatTime(participant.totalTime) : (shouldMaskTimesGlobal && completedAllSegments ? "Hidden" : (completedAllSegments ? formatTime(participant.totalTime) : "DNF"))}
-                                </p>
-                                <p className="text-xs text-muted-foreground">Total Time</p>
-                            </div>
-                        )}
-                    </div>
-                    );
-                    })}
-                </div>
-                ) : ( <p className="text-muted-foreground p-4 text-center">No participants yet.</p> )}
-            </CardContent>
-            </Card>
-        </TabsContent>
+      <TabsContent value="leaderboard">
+          {race?.useSexCategories ? (
+          <Tabs defaultValue={activeLeaderboardTab} className="w-full" onValueChange={setActiveLeaderboardTab}>
+              <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsTrigger value="female">Female</TabsTrigger>
+              <TabsTrigger value="male">Male</TabsTrigger>
+              <TabsTrigger value="other">Other/Overall</TabsTrigger>
+              </TabsList>
+              <TabsContent value="female">
+              {renderLeaderboardTable(femaleParticipants, "Female Leaderboard")}
+              </TabsContent>
+              <TabsContent value="male">
+              {renderLeaderboardTable(maleParticipants, "Male Leaderboard")}
+              </TabsContent>
+              <TabsContent value="other">
+                  {renderLeaderboardTable(otherParticipants.length > 0 ? otherParticipants : leaderboardParticipants, otherParticipants.length > 0 ? "Other Category Leaderboard" : "Overall Leaderboard")}
+              </TabsContent>
+          </Tabs>
+          ) : (
+          renderLeaderboardTable(leaderboardParticipants, "Overall Leaderboard")
+          )}
+      </TabsContent>
+    </Tabs>
 
-        <TabsContent value="leaderboard">
-            {race?.useSexCategories ? (
-            <Tabs defaultValue={activeLeaderboardTab} className="w-full" onValueChange={setActiveLeaderboardTab}>
-                <TabsList className="grid w-full grid-cols-3 mb-4">
-                <TabsTrigger value="female">Female</TabsTrigger>
-                <TabsTrigger value="male">Male</TabsTrigger>
-                <TabsTrigger value="other">Other/Overall</TabsTrigger>
-                </TabsList>
-                <TabsContent value="female">
-                {renderLeaderboardTable(femaleParticipants, "Female Leaderboard")}
-                </TabsContent>
-                <TabsContent value="male">
-                {renderLeaderboardTable(maleParticipants, "Male Leaderboard")}
-                </TabsContent>
-                <TabsContent value="other">
-                    {renderLeaderboardTable(otherParticipants.length > 0 ? otherParticipants : leaderboardParticipants, otherParticipants.length > 0 ? "Other Category Leaderboard" : "Overall Leaderboard")}
-                </TabsContent>
-            </Tabs>
-            ) : (
-            renderLeaderboardTable(leaderboardParticipants, "Overall Leaderboard")
-            )}
-        </TabsContent>
-      </Tabs>
-
-        <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
-            <DialogContent className="sm:max-w-lg">
-            <DialogHeader><DialogTitle>Submit Strava Activity</DialogTitle>
-            <DialogDescription> Select an activity from {race?.startDate ? formatDate(race.startDate) : 'N/A'} to {race?.endDate ? formatDate(race.endDate) : 'N/A'}. </DialogDescription></DialogHeader>
-            <div className="py-4 space-y-4">
-            {isFetchingActivities && (<div className="flex items-center justify-center p-6"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className="ml-2">Fetching activities...</p></div>)}
-            {!isFetchingActivities && activityFetchError && (<p className="text-center text-destructive p-2 border border-destructive/50 rounded-md bg-destructive/10">{activityFetchError}</p>)}
-            {!isFetchingActivities && !activityFetchError && stravaActivities.length === 0 && (<p className="text-center text-muted-foreground p-6">No eligible Strava activities found.</p>)}
-            {!isFetchingActivities && stravaActivities.length > 0 && (
-                <Select onValueChange={setSelectedActivity} value={selectedActivity || ""}>
-                <SelectTrigger> <SelectValue placeholder="Choose an activity to submit" /> </SelectTrigger>
-                <SelectContent className="max-h-60"> {stravaActivities.map((activity) => ( <SelectItem key={activity.id} value={activity.id.toString()}> {activity.name} ({format(parseISO(activity.startDateLocal), "MMM d, h:mm a")}, {(activity.distance / 1000).toFixed(1)}km) </SelectItem> ))} </SelectContent>
-                </Select>
-            )}
-            {activitySubmissionError && (<p className="text-sm text-destructive pt-2 text-center">{activitySubmissionError}</p>)}
-            </div>
-            <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => { setSubmitDialogOpen(false); setSelectedActivity(null); }} disabled={isSubmittingActivity}>Cancel</Button>
-            <Button type="button" onClick={handleActivitySubmit} disabled={!selectedActivity || isSubmittingActivity || isFetchingActivities}>
-                {isSubmittingActivity ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : 'Submit Activity'}
-            </Button>
-            </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    </div>
-  );
+      <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
+          <DialogContent className="sm:max-w-lg">
+          <DialogHeader><DialogTitle>Submit Strava Activity</DialogTitle>
+          <DialogDescription> Select an activity from {race?.startDate ? formatDate(race.startDate) : 'N/A'} to {race?.endDate ? formatDate(race.endDate) : 'N/A'}. </DialogDescription></DialogHeader>
+          <div className="py-4 space-y-4">
+          {isFetchingActivities && (<div className="flex items-center justify-center p-6"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className="ml-2">Fetching activities...</p></div>)}
+          {!isFetchingActivities && activityFetchError && (<p className="text-center text-destructive p-2 border border-destructive/50 rounded-md bg-destructive/10">{activityFetchError}</p>)}
+          {!isFetchingActivities && !activityFetchError && stravaActivities.length === 0 && (<p className="text-center text-muted-foreground p-6">No eligible Strava activities found.</p>)}
+          {!isFetchingActivities && stravaActivities.length > 0 && (
+              <Select onValueChange={setSelectedActivity} value={selectedActivity || ""}>
+              <SelectTrigger> <SelectValue placeholder="Choose an activity to submit" /> </SelectTrigger>
+              <SelectContent className="max-h-60"> {stravaActivities.map((activity) => ( <SelectItem key={activity.id} value={activity.id.toString()}> {activity.name} ({format(parseISO(activity.startDateLocal), "MMM d, h:mm a")}, {(activity.distance / 1000).toFixed(1)}km) </SelectItem> ))} </SelectContent>
+              </Select>
+          )}
+          {activitySubmissionError && (<p className="text-sm text-destructive pt-2 text-center">{activitySubmissionError}</p>)}
+          </div>
+          <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => { setSubmitDialogOpen(false); setSelectedActivity(null); }} disabled={isSubmittingActivity}>Cancel</Button>
+          <Button type="button" onClick={handleActivitySubmit} disabled={!selectedActivity || isSubmittingActivity || isFetchingActivities}>
+              {isSubmittingActivity ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : 'Submit Activity'}
+          </Button>
+          </DialogFooter>
+          </DialogContent>
+      </Dialog>
+  </div>
+);
 };
 
 export default RaceDetail;
