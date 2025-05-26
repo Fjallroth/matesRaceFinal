@@ -33,7 +33,7 @@ interface JoinRaceDialogProps {
 }
 
 const formSchema = z.object({
-  raceId: z.string().min(1, { message: 'Race ID is required.' }).regex(/^\d+$/, { message: "Race ID must be a number."}),
+  raceId: z.string().min(1, { message: 'Race ID is required.' }),
   password: z.string().optional(),
 });
 
@@ -142,7 +142,7 @@ const JoinRaceDialog: React.FC<JoinRaceDialogProps> = ({ isOpen, onOpenChange, o
         <DialogHeader>
           <DialogTitle>Join a Race</DialogTitle>
           <DialogDescription>
-            Enter the Race ID and password (if it's a private race) to join.
+            Enter the Race ID and password to join.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -165,7 +165,7 @@ const JoinRaceDialog: React.FC<JoinRaceDialogProps> = ({ isOpen, onOpenChange, o
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password (if private)</FormLabel>
+                  <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="Enter password" {...field} />
                   </FormControl>
