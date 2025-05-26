@@ -5,14 +5,11 @@ import Race from "../models/Race.js";
 import User from "../models/User.js";
 import Participant from "../models/Participant.js";
 import {
-  // Assuming stravaService methods are exported
   getUserActivities as fetchUserActivitiesFromStrava,
   processAndSaveActivityResults as processActivityForRace,
 } from "../services/stravaService.js";
 
 // Helper to convert DB Race to RaceResponseDTO structure
-// Note: In Node, you often just pick the fields or use a library like lodash.pick
-// For consistency with Java DTOs, we'll try to shape it similarly.
 const convertToRaceResponseDTO = async (
   race,
   includeParticipantsDetails = false,
@@ -21,8 +18,12 @@ const convertToRaceResponseDTO = async (
   if (!race) return null;
 
   let populatedRace = race;
-  if (!race.populated("organiser")) {
+  if (race.populated && !race.populated("organiser")) {
+    // Check if populated method exists
     populatedRace = await race.populate("organiser");
+  } else if (!race.organiser.kind) {
+    // Fallback if organiser is just an ID
+    populatedRace = await Race.findById(race._id).populate("organiser").exec();
   }
 
   let participantCount = 0;
@@ -30,8 +31,12 @@ const convertToRaceResponseDTO = async (
 
   if (includeParticipantsDetails) {
     const participants = await Participant.find({ race: race._id })
-      .populate("user")
-      .populate("segmentResults");
+      .populate({
+        path: "user",
+        model: "User", // Explicitly specify the model name
+      })
+      // .populate("segmentResults"); // segmentResults is embedded, no need to populate explicitly
+      .exec();
     participantCount = participants.length;
     participantDTOs = participants.map((p) =>
       convertToParticipantSummaryDTO(p, race, currentUserPassport)
@@ -44,9 +49,10 @@ const convertToRaceResponseDTO = async (
   if (
     currentUserPassport &&
     populatedRace.organiser &&
-    populatedRace.organiser.id.toString() === currentUserPassport.id.toString()
+    populatedRace.organiser._id && // Check if _id exists
+    populatedRace.organiser._id.toString() === currentUserPassport.id.toString()
   ) {
-    racePassword = race.password; // Organiser sees the plaintext password (if stored that way)
+    racePassword = race.password;
   }
 
   return {
@@ -62,12 +68,12 @@ const convertToRaceResponseDTO = async (
     useSexCategories: populatedRace.useSexCategories,
     participants: includeParticipantsDetails ? participantDTOs : [],
     participantCount: participantCount,
-    password: racePassword, // Only if current user is organizer
+    password: racePassword,
   };
 };
 
 const convertToUserSummaryDTO = (user) => {
-  if (!user) return null;
+  if (!user || !user.stravaId) return null; // Added check for user.stravaId
   return {
     stravaId: user.stravaId,
     displayName: user.displayName,
@@ -83,21 +89,38 @@ const convertToParticipantSummaryDTO = (
   raceContext,
   currentUserPassport
 ) => {
-  if (!participant) return null;
+  if (!participant || !participant.user) return null; // Added check for participant.user
 
   const currentUserId = currentUserPassport
     ? currentUserPassport.stravaId
     : null;
+
+  // Ensure raceContext.organiser is populated and has an _id
+  const organiserId =
+    raceContext.organiser && raceContext.organiser._id
+      ? raceContext.organiser._id.toString()
+      : null;
+
+  const currentActualUserId = currentUserPassport
+    ? currentUserPassport.id.toString()
+    : null;
+
   const isOrganiser =
-    raceContext.organiser &&
-    currentUserPassport &&
-    raceContext.organiser.id.toString() === currentUserPassport.id.toString();
+    organiserId && currentActualUserId && organiserId === currentActualUserId;
+
   const raceFinished =
     raceContext.endDate && new Date(raceContext.endDate) < new Date();
+
+  // Ensure participant.user is populated and has stravaId
+  const participantStravaId =
+    participant.user && participant.user.stravaId
+      ? participant.user.stravaId
+      : null;
+
   const isCurrentParticipant =
-    participant.user &&
-    currentUserPassport &&
-    participant.user.stravaId === currentUserId;
+    participantStravaId &&
+    currentUserId &&
+    participantStravaId === currentUserId;
 
   const showTimesForThisParticipant =
     isOrganiser ||
@@ -135,7 +158,7 @@ export const createRace = async (req, res, next) => {
       hideLeaderboardUntilFinish,
       useSexCategories,
     } = req.body;
-    const organiserUser = req.user; // From passport session (Mongoose User doc)
+    const organiserUser = req.user;
 
     if (!organiserUser) {
       return next(createError(401, "User not authenticated"));
@@ -147,24 +170,22 @@ export const createRace = async (req, res, next) => {
       startDate: new Date(startDate),
       endDate: new Date(endDate),
       segmentIds,
-      organiser: organiserUser._id, // Store ObjectId of the user
-      isPrivate: true, // Forced private
-      password, // Store password (consider hashing if it were for login)
+      organiser: organiserUser._id,
+      isPrivate: true,
+      password,
       hideLeaderboardUntilFinish,
       useSexCategories,
     });
 
     const savedRace = await newRace.save();
 
-    // Automatically add organiser as participant
     const organiserParticipant = new Participant({
       race: savedRace._id,
       user: organiserUser._id,
-      submittedRide: false, // Organiser might not submit a ride by default
+      submittedRide: false,
     });
     await organiserParticipant.save();
 
-    // Populate organiser for the response DTO
     const raceForResponse = await Race.findById(savedRace._id).populate(
       "organiser"
     );
@@ -183,15 +204,48 @@ export const createRace = async (req, res, next) => {
   }
 };
 
-// GET /api/races - Get All Races
+// GET /api/races - Get All Races (modified to filter for user)
 export const getAllRaces = async (req, res, next) => {
   try {
-    const races = await Race.find()
-      .populate("organiser")
+    const currentUser = req.user;
+    if (!currentUser) {
+      return next(createError(401, "User not authenticated. Please log in."));
+    }
+
+    // Find races where the current user is a participant
+    const participations = await Participant.find({ user: currentUser._id })
+      .select("race")
+      .lean(); // Use .lean() for performance if only IDs are needed initially
+
+    const participatingRaceIds = participations.map((p) => p.race);
+
+    // Find races organized by the current user OR races they are participating in
+    const races = await Race.find({
+      $or: [
+        { organiser: currentUser._id },
+        { _id: { $in: participatingRaceIds } },
+      ],
+    })
+      .populate("organiser") // Populate organiser details for all fetched races
       .sort({ createdAt: -1 });
-    // For "all races" view, participant details might not be needed for each card to save data
+
     const raceDTOs = await Promise.all(
-      races.map((race) => convertToRaceResponseDTO(race, false, req.user))
+      races.map(async (race) => {
+        // For convertToRaceResponseDTO, ensure the race object passed has the organiser populated
+        // If Race.find().populate() already did this, great. If not, you might need an explicit populate call
+        // or ensure the object structure matches what convertToRaceResponseDTO expects.
+        let detailedRace = race;
+        if (
+          !race.populated("organiser") &&
+          race.organiser &&
+          mongoose.Types.ObjectId.isValid(race.organiser.toString())
+        ) {
+          detailedRace = await Race.findById(race._id)
+            .populate("organiser")
+            .exec();
+        }
+        return convertToRaceResponseDTO(detailedRace, false, req.user);
+      })
     );
     res.status(200).json(raceDTOs);
   } catch (err) {
@@ -207,11 +261,30 @@ export const getRaceById = async (req, res, next) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return next(createError(400, "Invalid Race ID format."));
     }
+    // Ensure the race exists and the user is either an organizer or participant
     const race = await Race.findById(id).populate("organiser");
     if (!race) {
       return next(createError(404, `Race not found with ID: ${id}`));
     }
-    const responseDTO = await convertToRaceResponseDTO(race, true, req.user); // Include participant details
+
+    const isOrganiser =
+      race.organiser &&
+      race.organiser._id.toString() === req.user._id.toString();
+    const isParticipant = await Participant.findOne({
+      race: race._id,
+      user: req.user._id,
+    });
+
+    if (!isOrganiser && !isParticipant) {
+      // If the backend is strict and this endpoint is also for general discovery (which it isn't after previous change)
+      // you might allow public races. But since all races are private and /api/races is filtered,
+      // this check ensures only relevant users can access specific race details.
+      return next(
+        createError(403, "You are not authorized to view this race.")
+      );
+    }
+
+    const responseDTO = await convertToRaceResponseDTO(race, true, req.user);
     res.status(200).json(responseDTO);
   } catch (err) {
     console.error(`Error getting race by ID ${req.params.id}:`, err);
@@ -223,7 +296,7 @@ export const getRaceById = async (req, res, next) => {
 export const editRace = async (req, res, next) => {
   try {
     const { id: raceId } = req.params;
-    const updates = req.body; // Validated by Joi middleware
+    const updates = req.body;
     const currentUser = req.user;
 
     if (!mongoose.Types.ObjectId.isValid(raceId)) {
@@ -235,31 +308,24 @@ export const editRace = async (req, res, next) => {
       return next(createError(404, `Race not found with ID: ${raceId}`));
     }
 
-    // Authorization: Only organiser can edit
     if (raceToUpdate.organiser.toString() !== currentUser._id.toString()) {
       return next(
         createError(403, "You are not authorized to edit this race.")
       );
     }
 
-    // Apply updates
     Object.keys(updates).forEach((key) => {
       if (updates[key] !== undefined) {
-        // Allow clearing optional fields like description
         if (key === "startDate" || key === "endDate") {
           raceToUpdate[key] = new Date(updates[key]);
         } else if (key === "password" && updates[key] === "") {
-          // If password sent as empty, ignore (don't clear existing password)
-          // If truly want to clear password, need specific handling (but races are forced private)
-        } else if (key === "password" && updates[key]) {
-          // Password change logic (if any hashing is done, do it here or in pre-save)
-          raceToUpdate[key] = updates[key];
+          // Ignore if password is empty string
         } else {
           raceToUpdate[key] = updates[key];
         }
       }
     });
-    raceToUpdate.isPrivate = true; // Ensure it remains private
+    raceToUpdate.isPrivate = true;
 
     const updatedRace = await raceToUpdate.save();
     const raceForResponse = await Race.findById(updatedRace._id).populate(
@@ -284,9 +350,6 @@ export const editRace = async (req, res, next) => {
 export const deleteRace = async (req, res, next) => {
   try {
     const { id: raceId } = req.params;
-    console.log(
-      `Attempting to delete race with ID string from params: ${raceId}`
-    );
     const currentUser = req.user;
 
     if (!mongoose.Types.ObjectId.isValid(raceId)) {
@@ -304,20 +367,18 @@ export const deleteRace = async (req, res, next) => {
       );
     }
 
-    // Delete associated participants
     await Participant.deleteMany({ race: raceId });
-    // await ParticipantSegmentResult.deleteMany({ /* need a way to link to race or participant */ });
-    // If ParticipantSegmentResult is embedded in Participant, this is handled by deleting Participants.
-
     await Race.findByIdAndDelete(raceId);
-    res.status(204).send(); // No content
+    res.status(204).send();
   } catch (err) {
     console.error("Error deleting race:", err);
     next(createError(500, err.message || "Failed to delete race."));
   }
 };
 
-// GET /api/races/participating - Get races user is participating in
+// GET /api/races/participating - Get races user is participating in (redundant if /api/races is filtered)
+// This endpoint can be kept for clarity or removed if /api/races now serves the same purpose.
+// For now, let's assume it might be used by a different part of the frontend or offers a slightly different view.
 export const getParticipatingRaces = async (req, res, next) => {
   try {
     const currentUser = req.user;
@@ -330,7 +391,7 @@ export const getParticipatingRaces = async (req, res, next) => {
         populate: { path: "organiser" },
       });
 
-    const races = participations.map((p) => p.race).filter(Boolean); // Filter out any null races if a participation doc somehow exists without one
+    const races = participations.map((p) => p.race).filter(Boolean);
 
     const raceDTOs = await Promise.all(
       races.map((race) => convertToRaceResponseDTO(race, false, req.user))
@@ -368,10 +429,8 @@ export const joinRace = async (req, res, next) => {
     }
 
     if (race.isPrivate) {
-      // In Node, if passwords are plain text for race entry (not login), direct compare.
-      // If they were hashed (e.g. with bcrypt), you'd compare hashes.
-      // The Java app seems to store race passwords plaintext or a reversible form for this check.
       if (race.password !== password) {
+        // Assuming plaintext for race entry passwords
         return next(createError(401, "Incorrect password for private race."));
       }
     }
@@ -381,18 +440,20 @@ export const joinRace = async (req, res, next) => {
       user: currentUser._id,
     });
     const savedParticipant = await newParticipant.save();
-    await savedParticipant.populate("user"); // Populate user for the DTO
+    await savedParticipant.populate({
+      path: "user",
+      model: "User",
+    });
 
     const participantSummary = convertToParticipantSummaryDTO(
       savedParticipant,
       race,
       req.user
     );
-    res.status(200).json(participantSummary); // 200 OK or 201 Created
+    res.status(200).json(participantSummary);
   } catch (err) {
     console.error("Error joining race:", err);
     if (err.code === 11000) {
-      // Mongo duplicate key error
       return next(
         createError(
           409,
@@ -408,7 +469,7 @@ export const joinRace = async (req, res, next) => {
 export const removeParticipant = async (req, res, next) => {
   try {
     const { raceId, participantId } = req.params;
-    const requester = req.user; // Authenticated user
+    const requester = req.user;
 
     if (
       !mongoose.Types.ObjectId.isValid(raceId) ||
@@ -424,7 +485,6 @@ export const removeParticipant = async (req, res, next) => {
     if (!participantToDelete)
       return next(createError(404, "Participant not found."));
 
-    // Check if participant belongs to the specified race
     if (participantToDelete.race.toString() !== raceId) {
       return next(
         createError(400, "Participant does not belong to this race.")
@@ -454,7 +514,7 @@ export const removeParticipant = async (req, res, next) => {
 export const getStravaActivitiesForRace = async (req, res, next) => {
   try {
     const { raceId } = req.params;
-    const passportUser = req.user; // User from Passport session
+    const passportUser = req.user;
 
     if (!mongoose.Types.ObjectId.isValid(raceId)) {
       return next(createError(400, "Invalid Race ID format."));
@@ -477,7 +537,6 @@ export const getStravaActivitiesForRace = async (req, res, next) => {
       `Error in getStravaActivitiesForRace for race ${req.params.raceId}:`,
       err
     );
-    // Pass HttpError directly if it's from stravaService
     if (err instanceof createError.HttpError) return next(err);
     next(
       createError(
@@ -492,7 +551,7 @@ export const getStravaActivitiesForRace = async (req, res, next) => {
 export const submitStravaActivityForRace = async (req, res, next) => {
   try {
     const { raceId } = req.params;
-    const { activityId } = req.body; // Validated by Joi
+    const { activityId } = req.body;
     const passportUser = req.user;
 
     if (!mongoose.Types.ObjectId.isValid(raceId)) {
@@ -501,12 +560,10 @@ export const submitStravaActivityForRace = async (req, res, next) => {
     if (!passportUser) return next(createError(401, "User not authenticated."));
     if (!activityId) return next(createError(400, "Activity ID is required."));
 
-    // Authorization: Ensure user is a participant (implicitly checked by processAndSaveActivityResults)
-    // The service `processAndSaveActivityResults` will also check if user is a participant
     await processActivityForRace(passportUser, raceId, activityId);
     res
       .status(200)
-      .json({ message: "Activity submitted and processed successfully." }); // Or 204 No Content
+      .json({ message: "Activity submitted and processed successfully." });
   } catch (err) {
     console.error(
       `Error submitting Strava activity for race ${req.params.raceId}:`,
