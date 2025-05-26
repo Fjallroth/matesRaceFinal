@@ -35,6 +35,9 @@ import ParticipantSegmentResult from "./models/ParticipantSegmentResult.js";
 // Initialize Express app
 const app = express();
 
+if (config.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
 // Connect to MongoDB
 connectDB();
 
