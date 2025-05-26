@@ -12,7 +12,7 @@ export default {
   NODE_ENV: process.env.NODE_ENV || "development",
   PORT: process.env.PORT || 8080,
   MONGO_URI:
-    process.env.NODE_ENV === "docker"
+    process.env.NODE_ENV === "production"
       ? process.env.MONGO_URI
       : process.env.MONGO_URI_LOCAL,
   STRAVA_CLIENT_ID: process.env.STRAVA_CLIENT_ID,
