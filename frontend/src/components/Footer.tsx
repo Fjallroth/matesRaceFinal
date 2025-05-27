@@ -11,9 +11,6 @@ const Footer: React.FC = () => {
       <div className="container mx-auto px-4">
         <div className="mb-4">
           <Coffee className="h-8 w-8 mx-auto mb-2 text-primary" />
-          <p className="text-sm md:text-base leading-relaxed">
-            I made MatesRace because strapping digital watches to handlebars and calling it "timing" needed an upgrade! This app is my way of taking the faff out so you can enjoy the ride (and the friendly competition!).
-          </p>
           <p className="text-sm md:text-base leading-relaxed mt-3">
             I am offering this for free and I want to keep it that way, I can't be bleeding folks dry with yet another subscription. 
             That being said if you are enjoying it and want help keep the servers online, I would really appreciate a tip or donation. 
