@@ -8,11 +8,9 @@ import {
   Calendar as CalendarIcon,
   Plus,
   X,
-  // Lock, // No longer needed for privacy toggle
-  // Globe, // No longer needed for privacy toggle
   Loader2,
   AlertTriangle,
-  Users // For sex categories
+  Users 
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -33,8 +31,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-// import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Removed
-// import { Checkbox } from "@/components/ui/checkbox"; // Keep if used for sex categories, or use Switch
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -55,11 +51,10 @@ const formObjectSchema = z.object({
     segments: z.array(z.string()).min(1, {
       message: "At least one segment is required.",
     }),
-    // privacy: z.enum(["public", "private"]), // Removed, forced to private
     password: z.string().min(4, { message: "Password is required and must be at least 4 characters." }), // Always required
     hideLeaderboardUntilFinish: z.boolean().default(false),
-    useSexCategories: z.boolean().default(false), // New field for sex categories
-    // categories object removed as age categories are gone for now
+    useSexCategories: z.boolean().default(false), 
+    
   });
 
 const formSchema = formObjectSchema.superRefine((data, ctx) => {
@@ -70,7 +65,6 @@ const formSchema = formObjectSchema.superRefine((data, ctx) => {
             path: ["endDate"],
         });
     }
-    // Password validation is now at field level if always required
 });
 
 
@@ -91,16 +85,15 @@ export default function CreateRaceForm() {
       startDate: new Date(),
       endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
       segments: [],
-      // privacy: "private", // No longer needed in form state, forced in payload
       password: "",
       hideLeaderboardUntilFinish: false,
-      useSexCategories: false, // Default for sex categories
+      useSexCategories: false, 
     },
   });
 
   const segmentsWatch = form.watch("segments");
 
-  const handleAddSegment = () => { /* ... same as before ... */
+  const handleAddSegment = () => { 
     if (!segmentInput.trim()) return;
     const segmentPattern = /^(https:\/\/www\.strava\.com\/segments\/\d+|\d+)$/;
     if (!segmentPattern.test(segmentInput)) {
@@ -125,7 +118,7 @@ export default function CreateRaceForm() {
     form.clearErrors("segments");
     setSegmentInput("");
    };
-  const handleRemoveSegment = (index: number) => { /* ... same as before ... */
+  const handleRemoveSegment = (index: number) => { 
     const updatedSegments = [...segmentsWatch];
     updatedSegments.splice(index, 1);
     form.setValue("segments", updatedSegments);
@@ -151,12 +144,10 @@ export default function CreateRaceForm() {
       startDate: values.startDate.toISOString(),
       endDate: values.endDate.toISOString(),
       segmentIds: segmentIdsAsNumbers,
-      // privacy: "private", // Forced by backend or implicitly private now
-      password: values.password, // Always send password
+      password: values.password, 
       hideLeaderboardUntilFinish: values.hideLeaderboardUntilFinish,
-      useSexCategories: values.useSexCategories, // Include new field
+      useSexCategories: values.useSexCategories, 
     };
-    // ... (fetch logic remains the same)
     console.log("Submitting payload:", payload);
 
     try {
@@ -201,13 +192,12 @@ export default function CreateRaceForm() {
 
   return (
     <div className="w-full max-w-2xl mx-auto bg-background p-6 rounded-xl shadow-sm">
-      {/* ... (back button, title, apiError alert remain the same) ... */}
        <div className="mb-6">
         <Button variant="outline" onClick={() => navigate("/")}>
           Back to Dashboard
         </Button>
       </div>
-      <h2 className="text-2xl font-bold mb-6 text-center">Create New Private Race</h2>
+      <h2 className="text-2xl font-bold mb-6 text-center">Create New Race</h2>
 
       {apiError && (
         <Alert variant="destructive" className="mb-4">
@@ -219,7 +209,6 @@ export default function CreateRaceForm() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmitFunc)} className="space-y-6">
-          {/* Race Name, Description, Dates, Segments fields remain the same */}
             <FormField
             control={form.control}
             name="raceName"
@@ -228,13 +217,10 @@ export default function CreateRaceForm() {
                 <FormLabel>Race Name</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Weekend Hill Climb Challenge"
+                    placeholder="Weekend Segment Smasher"
                     {...field}
                   />
                 </FormControl>
-                <FormDescription>
-                  Give your race a catchy, descriptive name.
-                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -292,7 +278,6 @@ export default function CreateRaceForm() {
                       />
                     </PopoverContent>
                   </Popover>
-                  <FormDescription>When the race begins.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -302,7 +287,7 @@ export default function CreateRaceForm() {
               name="endDate"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>End Date</FormLabel>
+                  <FormLabel>When Submissions Close</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -335,7 +320,6 @@ export default function CreateRaceForm() {
                       />
                     </PopoverContent>
                   </Popover>
-                  <FormDescription>When submissions close.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -359,7 +343,7 @@ export default function CreateRaceForm() {
                   </Button>
                 </div>
                 <FormDescription>
-                  Add one or more Strava segments for this race.
+                  Add one or more Strava segments for this race. When you view a segment on Strava with your browser, the ID is in the URL.
                 </FormDescription>
                 <FormMessage />
                  {segmentsWatch.length > 0 && (
@@ -383,8 +367,6 @@ export default function CreateRaceForm() {
             )}
           />
 
-
-          {/* Password Field (Always visible and required) */}
           <FormField
             control={form.control}
             name="password"
@@ -400,14 +382,13 @@ export default function CreateRaceForm() {
                   />
                 </FormControl>
                 <FormDescription>
-                  All races are private. Participants will need this password to join.
+                  Participants will need this password to join. It is stored in plain text and you are sharing it with participants so be sure not to use anything important like your myspace password.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          {/* Hide Leaderboard Switch (remains the same) */}
           <FormField
             control={form.control}
             name="hideLeaderboardUntilFinish"
@@ -431,7 +412,6 @@ export default function CreateRaceForm() {
             )}
           />
 
-          {/* Enable Sex Categories Switch */}
           <FormField
             control={form.control}
             name="useSexCategories"
@@ -454,8 +434,6 @@ export default function CreateRaceForm() {
               </FormItem>
             )}
           />
-
-          {/* Age Categories Removed */}
 
           <div className="flex justify-end pt-4">
             <Button type="submit" disabled={isLoading}>

@@ -10,7 +10,7 @@ import { Race } from "@/types/raceTypes";
 import { parseISO } from 'date-fns';
 import JoinRaceDialog from "./JoinRaceDialog";
 import { useAuth } from "@/AuthContext";
-import { useToast } from "@/components/ui/use-toast"; // For user feedback
+import { useToast } from "@/components/ui/use-toast"; 
 
 const Home = () => {
   const navigate = useNavigate();
@@ -113,12 +113,6 @@ const Home = () => {
     navigate(`/edit-race/${raceId}`);
   };
 
-  const handleManageParticipantsClick = (raceId: string) => {
-    console.log(`Placeholder: Manage participants for race ${raceId}`);
-    toast({ title: "Manage Participants", description: `This feature is coming soon for race ${raceId}.` });
-    // Example navigation: navigate(`/race/${raceId}/participants`); // You'll need to create this route and page
-  };
-
   const handleDeleteRaceClick = async (raceId: string) => {
     if (!window.confirm("Are you sure you want to delete this race? This action cannot be undone.")) {
       return;
@@ -134,7 +128,7 @@ const Home = () => {
 
       if (response.ok) {
         toast({ title: "Race Deleted", description: `Race ${raceId} has been successfully deleted.` });
-        fetchRaces(); // Refresh the list of races
+        fetchRaces(); 
       } else {
         const errorData = await response.json().catch(() => ({ message: "Failed to delete race. The server response was not valid JSON." }));
         if (response.status === 401 || response.status === 403) {
@@ -179,8 +173,8 @@ const Home = () => {
     <div className="container mx-auto px-4 py-8 bg-background min-h-screen">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">MatesRace Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Discover, join, and manage your cycling races.</p>
+          <h1 className="text-3xl font-bold text-foreground">MatesRace</h1>
+          <p className="text-muted-foreground mt-1">Create some friendly competition on the group ride</p>
         </div>
         <div className="flex gap-3">
           <Button className="bg-primary hover:bg-primary/90" onClick={handleCreateRace}>
@@ -244,7 +238,6 @@ const Home = () => {
                 onClick={() => handleViewRaceDetails(race.id)}
                 isOrganizedByCurrentUser={isOrganizedByCurrentUser}
                 onEditRaceClick={isOrganizedByCurrentUser ? handleEditRaceClick : undefined}
-                onManageParticipantsClick={isOrganizedByCurrentUser ? handleManageParticipantsClick : undefined}
                 onDeleteRaceClick={isOrganizedByCurrentUser ? handleDeleteRaceClick : undefined}
               />
             );
