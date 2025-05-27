@@ -27,19 +27,18 @@ const Login: React.FC = () => {
             Welcome to MatesRace!
           </h1>
           <p className="text-xl text-muted-foreground mt-3 max-w-2xl mx-auto">
-            Turn your regular Strava segments into epic (but friendly!) races with your mates.
+            Add some friendly competition to your group ride!
           </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 items-center">
           <div className="space-y-6 bg-card/50 p-6 sm:p-8 rounded-lg shadow-lg border">
-            <h2 className="text-2xl font-semibold text-foreground mb-1">Tired of duct-taping watches to handlebars?</h2>
-            <p className="text-muted-foreground text-sm mb-4"> (Yes, that's genuinely how this whole thing started!) </p>
+            <h2 className="text-2xl font-semibold text-foreground mb-1">Easily plan races</h2>
             <p className="text-foreground/90 leading-relaxed">
-              MatesRace is for cyclists who love some friendly competition. Ever wanted an easy way to see who's quickest on your favorite local Strava segments without the faff of spreadsheets or manually checking leaderboards? That's exactly why MatesRace was built.
+              MatesRace is for cyclists who love some friendly competition. Ever wanted to plan a race without the faff of spreadsheets or manually timing yourselves? That's exactly why MatesRace was built.
             </p>
 
-            <h3 className="text-xl font-semibold text-foreground pt-3">Here's the Lowdown:</h3>
+            <h3 className="text-xl font-semibold text-foreground pt-3">How it works:</h3>
             <ul className="space-y-3 text-muted-foreground">
               <li className="flex items-start">
                 <Zap className="h-5 w-5 mr-3 mt-1 text-yellow-500 flex-shrink-0" />
