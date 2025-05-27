@@ -23,7 +23,7 @@ const Login: React.FC = () => {
       <div className="w-full max-w-5xl mx-auto">
         <div className="text-center mb-10">
           <h1 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
-            Welcome to MatesRace!
+            MatesRace
           </h1>
           <p className="text-xl text-muted-foreground mt-3 max-w-2xl mx-auto">
             Add some friendly competition to your group ride!
@@ -66,9 +66,6 @@ const Login: React.FC = () => {
               <CardTitle className="text-center text-2xl font-semibold">
                 Ready to Race Your Mates?
               </CardTitle>
-              <CardDescription className="text-center">
-                Connect with Strava to get started.
-              </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-6 py-8">
               <Button
@@ -85,7 +82,6 @@ const Login: React.FC = () => {
                   <strong>Data:</strong> We never see your contact details. That means:
                   <br />– No marketing spam<br />– No selling your data
                 </p>
-
                 <div>
                   <strong>What data do we store?</strong>
                   <p className="pt-1">
