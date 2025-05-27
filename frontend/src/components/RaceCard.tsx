@@ -10,11 +10,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Users, Info, Lock, Unlock, Edit, Trash2, Settings2 } from "lucide-react"; // Added Info icon
-import { RaceOrganiser } from "@/types/raceTypes"; // Ensure this type path is correct
-
+import { Users, Info, Lock, Unlock, Edit, Trash2, Settings2 } from "lucide-react"; 
+import { RaceOrganiser } from "@/types/raceTypes"; 
 interface RaceCardProps {
-  id: string; // Race ID is already a prop
+  id: string; 
   name: string;
   status: "upcoming" | "ongoing" | "finished";
   startDate: Date;
@@ -118,14 +117,6 @@ const RaceCard: React.FC<RaceCardProps> = ({
               title="Edit Race Details"
             >
               <Edit className="h-4 w-4 md:mr-1" /> <span className="hidden md:inline">Edit Race</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={(e) => handleActionClick(e, () => onManageParticipantsClick?.(id))}
-              title="Manage Participants"
-            >
-              <Settings2 className="h-4 w-4 md:mr-1" /> <span className="hidden md:inline">Participants</span>
             </Button>
             <Button
               size="sm"
