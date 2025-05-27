@@ -8,6 +8,10 @@ import {
   processAndSaveActivityResults as processActivityForRace,
 } from "../services/stravaService.js";
 
+const MAX_ACTIVE_ORGANIZED_RACES = 10;
+const MAX_JOINED_RACES = 1000;
+const MAX_RACE_PARTICIPANTS = 500;
+
 const convertToRaceResponseDTO = async (
   race,
   includeParticipantsDetails = false,
@@ -154,6 +158,26 @@ export const createRace = async (req, res, next) => {
 
     if (!organiserUser) {
       return next(createError(401, "User not authenticated"));
+    }
+
+    // Check active organized race limit
+    const now = new Date();
+    const activeOrganizedRacesCount = await Race.countDocuments({
+      organiser: organiserUser._id,
+      endDate: { $gte: now }, // Races that haven't ended yet
+    });
+
+    if (
+      activeOrganizedRacesCount >= MAX_ACTIVE_ORGANIZED_RACES &&
+      !organiserUser.isPremium
+    ) {
+      // Added isPremium check
+      return next(
+        createError(
+          403,
+          `You have reached the maximum limit of ${MAX_ACTIVE_ORGANIZED_RACES} active organized races. Consider upgrading to premium for more.`
+        )
+      );
     }
 
     const newRace = new Race({
@@ -389,8 +413,32 @@ export const joinRace = async (req, res, next) => {
     }
     if (!currentUser) return next(createError(401, "User not authenticated."));
 
+    const joinedRacesCount = await Participant.countDocuments({
+      user: currentUser._id,
+    });
+    if (joinedRacesCount >= MAX_JOINED_RACES && !currentUser.isPremium) {
+      return next(
+        createError(
+          403,
+          `You have reached the maximum limit of ${MAX_JOINED_RACES} joined races. Consider upgrading to premium for more.`
+        )
+      );
+    }
+
     const race = await Race.findById(raceId);
     if (!race) return next(createError(404, "Race not found."));
+
+    const currentParticipantCount = await Participant.countDocuments({
+      race: raceId,
+    });
+    if (currentParticipantCount >= MAX_RACE_PARTICIPANTS) {
+      return next(
+        createError(
+          403,
+          `This race has reached its maximum participant limit of ${MAX_RACE_PARTICIPANTS}.`
+        )
+      );
+    }
 
     const existingParticipant = await Participant.findOne({
       race: raceId,

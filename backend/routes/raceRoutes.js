@@ -22,6 +22,7 @@ import {
   joinRaceSchema,
   submitActivitySchema,
 } from "../dtos/raceDTOs.js";
+import { joinRaceLimiter } from "../middleware/rateLimitMiddleware.js"; // Import the new middleware
 
 const router = express.Router();
 router.post(
@@ -45,6 +46,7 @@ router.get("/participating", isAuthenticated, getParticipatingRaces);
 router.post(
   "/:raceId/join",
   isAuthenticated,
+  joinRaceLimiter, // Apply the rate limiter
   validateRequest(joinRaceSchema),
   joinRace
 );
