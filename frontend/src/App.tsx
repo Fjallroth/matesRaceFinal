@@ -7,6 +7,8 @@ import CreateRaceForm from './components/CreateRaceForm.tsx';
 import EditRacePage from './pages/EditRacePage.tsx';
 import Footer from './components/Footer.tsx'; 
 import AboutPage from './pages/AboutPage.tsx'; 
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage.tsx';
+import TermsAndConditionsPage from './pages/TermsandConditionsPage.tsx';
 import { useAuth } from './AuthContext.tsx';
 import { Toaster } from "@/components/ui/toaster"; 
 
@@ -59,6 +61,8 @@ const App: React.FC = () => {
         <Route element={<PublicRoute />}>
            <Route path="/login" element={<Login />} />
            <Route path="/about" element={<AboutPage />} />
+           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+           <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
         </Route>
 
 

@@ -34,6 +34,11 @@ const Footer: React.FC = () => {
             {' | '}
             <a href="https://www.strava.com" target="_blank" rel="noopener noreferrer" className="hover:underline">Powered by Strava</a>
           </p>
+          <p className="text-xs mt-2">
+                  By connecting, you agree to our  {" "}
+                  <a href="/terms-and-conditions" className="text-primary/80 hover:underline">Terms</a> &{" "}
+                  <a href="/privacy-policy" className="text-primary/80 hover:underline">Privacy Policy</a>.
+                </p>
         </div>
       </div>
     </footer>

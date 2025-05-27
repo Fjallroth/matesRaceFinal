@@ -108,9 +108,9 @@ const Login: React.FC = () => {
                   </Link>
                 </p>
                 <p className="text-xs mt-2">
-                  By connecting, you agree to our imaginary (but soon-to-be-real?){" "}
-                  <a href="#" className="text-primary/80 hover:underline">Terms</a> &{" "}
-                  <a href="#" className="text-primary/80 hover:underline">Privacy Policy</a>.
+                  By connecting, you agree to our  {" "}
+                  <a href="/terms-and-conditions" className="text-primary/80 hover:underline">Terms</a> &{" "}
+                  <a href="/privacy-policy" className="text-primary/80 hover:underline">Privacy Policy</a>.
                 </p>
               </div>
             </CardFooter>
