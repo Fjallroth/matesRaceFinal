@@ -192,7 +192,7 @@ const Home = () => {
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center px-6 py-2 border border-transparent text-base font-medium rounded-md text-white bg-yellow-500 hover:bg-yellow-600 transition-colors"
             >
-              <Coffee className="mr-2 h-5 w-5" /> Support MatesRace
+              <Coffee className="mr-2 h-5 w-5" /> Support
             </a>
         </div>
       </div>
