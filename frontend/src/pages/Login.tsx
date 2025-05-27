@@ -87,14 +87,14 @@ const Login: React.FC = () => {
             </p>
             <p className="text-sm text-center text-muted-foreground/80 pt-4">
               <strong>What data does get stored?</strong> When you authenticate, the following Strava details are saved in a database which is protected with 2FA. We will never sell or pass on your data to a third party. Location data will help with selecting a server location to best serve the majority of users.
-              <List>
+              <ul>
                 <li>Your Display Name</li>
                 <li>Your Sex which you selected on Strava</li>
                 <li>The city you told Strava you live in</li>
                 <li>The state you told Strava you live in</li>
                 <li>The country you told strava you live in</li>
                 <li>A url for your profile picture is saved</li>
-              </List>
+              </ul>
             </p>
             </CardContent>
             <CardFooter className="flex flex-col items-center justify-center border-t pt-6 pb-6">
