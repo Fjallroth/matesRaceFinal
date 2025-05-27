@@ -3,7 +3,7 @@ import { Coffee } from 'lucide-react';
 import { Link } from 'react-router-dom'; 
 
 const Footer: React.FC = () => {
-  const kofiLink = "https://www.https://ko-fi.com/crispy100";
+  const kofiLink = "https://ko-fi.com/crispy100";
   const currentYear = new Date().getFullYear();
 
   return (
