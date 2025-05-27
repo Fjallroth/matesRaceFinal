@@ -79,15 +79,16 @@ const Login: React.FC = () => {
                 className="w-full max-w-xs text-lg py-3 bg-orange-600 hover:bg-orange-700 text-white shadow-md"
                 size="lg"
               >
-                <Mountain className="w-5 h-5 mr-2.5" /> {/* Strava-like icon */}
+                <Mountain className="w-5 h-5 mr-2.5" /> 
                 Connect with Strava
               </Button>
               <p className="text-sm text-center text-muted-foreground/80 pt-4">
               <strong>Data:</strong> Due to your login with Strava, we will never see your contact details meaning we won't be sending you any marketing spam and we will not sell your data!
             </p>
             <p className="text-sm text-center text-muted-foreground/80 pt-4">
-              <strong>What data does get stored?</strong> When you authenticate, the following Strava details are saved in a database which is protected with 2FA. We will never sell or pass on your data to a third party. Location data will help with selecting a server location to best serve the majority of users.
+              <strong>What data does get stored?</strong> We will never sell or pass on your data to a third party. Location data will help with selecting a server location to best serve the majority of users. When you authenticate, the following Strava details are saved in a database which is protected with 2FA:
               <ul>
+                <li></li>
                 <li>Your Display Name</li>
                 <li>Your Sex which you selected on Strava</li>
                 <li>The city you told Strava you live in</li>
