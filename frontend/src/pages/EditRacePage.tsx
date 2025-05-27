@@ -31,22 +31,19 @@ const raceFormSchema = z.object({
   segments: z.array(z.string()).min(1, {
     message: "At least one segment is required.",
   }),
-  // isPrivate: z.boolean(), // Removed - races are always private
-  password: z.string().optional(), // Still allow changing password
+
+  password: z.string().optional(),
   hideLeaderboardUntilFinish: z.boolean().default(false),
-  useSexCategories: z.boolean().default(false), // New field
+  useSexCategories: z.boolean().default(false), 
 }).refine(data => new Date(data.endDate) > new Date(data.startDate), {
   message: "End date must be after start date.",
   path: ["endDate"],
 });
-// Removed refine for password related to isPrivate as it's always private.
-// Password validation if changing should be handled (e.g., min length if new password provided).
 
 type RaceFormData = z.infer<typeof raceFormSchema>;
 
 const EditRacePage: React.FC = () => {
   const { raceId } = useParams<{ raceId: string }>();
-  // ... (hooks remain the same)
   const navigate = useNavigate();
   const { toast } = useToast();
   const [race, setRace] = useState<Race | null>(null);
@@ -64,8 +61,7 @@ const EditRacePage: React.FC = () => {
       startDate: '',
       endDate: '',
       segments: [],
-      // isPrivate: true, // No longer needed in form state
-      password: '', // For entering a new password
+      password: '',
       hideLeaderboardUntilFinish: false,
       useSexCategories: false,
     },
@@ -73,10 +69,8 @@ const EditRacePage: React.FC = () => {
 
   const { control, handleSubmit, watch, setValue, formState: { errors }, setError: setFormError, clearErrors } = form;
   const currentSegments = watch('segments');
-  // const isPrivateWatch = watch('isPrivate'); // No longer needed
 
   const fetchRaceDetails = useCallback(async () => {
-    // ... (fetch logic largely the same)
      if (!raceId) {
       setError("Race ID is missing.");
       setIsLoading(false);
@@ -105,10 +99,9 @@ const EditRacePage: React.FC = () => {
       setValue('startDate', format(parseISO(data.startDate), "yyyy-MM-dd'T'HH:mm"));
       setValue('endDate', format(parseISO(data.endDate), "yyyy-MM-dd'T'HH:mm"));
       setValue('segments', data.segmentIds.map(String));
-      // setValue('isPrivate', data.isPrivate); // No longer needed to set this in form
       setValue('hideLeaderboardUntilFinish', data.hideLeaderboardUntilFinish);
-      setValue('useSexCategories', data.useSexCategories || false); // Set new field, default if not present
-      setValue('password', ''); // Password field is for changing, not displaying existing hashed one
+      setValue('useSexCategories', data.useSexCategories || false); 
+      setValue('password', ''); 
     } catch (err: any) {
         setError(err.message);
         console.error("Error fetching race details:", err);
@@ -121,7 +114,7 @@ const EditRacePage: React.FC = () => {
     fetchRaceDetails();
   }, [fetchRaceDetails]);
 
-  const handleAddSegment = () => { /* ... same ... */
+  const handleAddSegment = () => {
      if (!segmentInput.trim()) return;
     const segmentPattern = /^(https:\/\/www\.strava\.com\/segments\/\d+|\d+)$/;
     if (!segmentPattern.test(segmentInput)) {
@@ -146,14 +139,13 @@ const EditRacePage: React.FC = () => {
     clearErrors("segments");
     setSegmentInput("");
   };
-  const handleRemoveSegment = (index: number) => { /* ... same ... */
+  const handleRemoveSegment = (index: number) => {
      const updatedSegments = [...currentSegments];
     updatedSegments.splice(index, 1);
     setValue("segments", updatedSegments);
   };
 
   const onSubmit = async (data: RaceFormData) => {
-    // ... (segment ID processing same)
     setIsSubmitting(true);
     setError(null);
 
@@ -162,24 +154,23 @@ const EditRacePage: React.FC = () => {
       .filter(id => !isNaN(id) && id > 0);
 
     if (segmentIdsAsNumbers.length !== data.segments.length) {
-      toast({ /* ... */ });
+      toast({});
       setIsSubmitting(false);
       return;
     }
 
 
-    const raceUpdatePayload: any = { // Use any for flexibility or define a specific update DTO type
+    const raceUpdatePayload: any = { 
       raceName: data.raceName,
       description: data.raceInfo,
       startDate: new Date(data.startDate).toISOString(),
       endDate: new Date(data.endDate).toISOString(),
       segmentIds: segmentIdsAsNumbers,
-      privacy: "private", // Always private
+      privacy: "private", 
       hideLeaderboardUntilFinish: data.hideLeaderboardUntilFinish,
       useSexCategories: data.useSexCategories,
     };
 
-    // Only include password if it's provided (for changing it)
     if (data.password && data.password.length > 0) {
         if (data.password.length < 4) {
              toast({
@@ -192,7 +183,6 @@ const EditRacePage: React.FC = () => {
         }
       raceUpdatePayload.password = data.password;
     }
-    // ... (fetch PUT logic remains the same)
      try {
       const response = await fetch(`/api/races/${raceId}`, {
         method: 'PUT',
@@ -227,14 +217,13 @@ const EditRacePage: React.FC = () => {
     }
   };
 
-  // ... (isLoading, error, !race checks remain the same)
-   if (isLoading) { /* ... */ return (
+   if (isLoading) { return (
       <div className="flex justify-center items-center min-h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="ml-4 text-lg">Loading race details...</p>
       </div>
     ); }
-  if (error && !race) { /* ... */ return (
+  if (error && !race) { return (
       <div className="container mx-auto px-4 py-8 text-center">
         <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
         <h2 className="text-xl font-semibold text-destructive mb-2">Error Loading Race</h2>
@@ -257,7 +246,6 @@ const EditRacePage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <Card>
-        {/* ... (CardHeader remains the same) ... */}
          <CardHeader>
           <Button variant="outline" size="sm" className="mb-4 w-fit" onClick={() => navigate(`/race/${raceId}`)}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Race
@@ -268,7 +256,6 @@ const EditRacePage: React.FC = () => {
         <Form {...form}>
           <form onSubmit={handleSubmit(onSubmit)}>
             <CardContent className="space-y-6">
-              {/* Race Name, Info, Dates, Segments fields remain the same */}
                 <FormField control={control} name="raceName" render={({ field }) => ( <FormItem><FormLabel>Race Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={control} name="raceInfo" render={({ field }) => ( <FormItem><FormLabel>Race Information (Optional)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -276,10 +263,6 @@ const EditRacePage: React.FC = () => {
                     <FormField control={control} name="endDate" render={({ field }) => ( <FormItem><FormLabel>End Date & Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem> )} />
                 </div>
                 <FormField control={control} name="segments" render={() => ( <FormItem> <FormLabel>Strava Segments</FormLabel> <div className="flex items-center space-x-2"> <Input value={segmentInput} onChange={(e) => setSegmentInput(e.target.value)} className="flex-1" /> <Button type="button" onClick={handleAddSegment} size="icon"><Plus className="h-4 w-4" /></Button> </div> <FormDescription>Add one or more Strava segments.</FormDescription> <FormMessage /> {currentSegments.length > 0 && ( <div className="mt-4"><Card><CardContent className="p-4"><h4 className="text-sm font-medium mb-2">Added Segments:</h4><ul className="space-y-2"> {currentSegments.map((segment, index) => ( <li key={index} className="flex items-center justify-between bg-muted p-2 rounded-md"> <div className="flex items-center overflow-hidden"><Badge variant="secondary" className="mr-2 flex-shrink-0">{index + 1}</Badge><span className="text-sm truncate">{segment}</span></div> <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveSegment(index)} className="flex-shrink-0"><X className="h-4 w-4" /></Button> </li> ))} </ul></CardContent></Card></div> )} </FormItem> )} />
-
-              {/* isPrivate Switch Removed */}
-
-              {/* Password Field (Always visible for changing) */}
               <FormField
                 control={control}
                 name="password"
@@ -301,8 +284,6 @@ const EditRacePage: React.FC = () => {
                   </FormItem>
                 )}
               />
-
-              {/* Hide Leaderboard Switch (remains the same) */}
               <FormField
                 control={control}
                 name="hideLeaderboardUntilFinish"
@@ -324,7 +305,6 @@ const EditRacePage: React.FC = () => {
                 )}
               />
 
-              {/* Enable Sex Categories Switch */}
               <FormField
                 control={control}
                 name="useSexCategories"
@@ -345,9 +325,6 @@ const EditRacePage: React.FC = () => {
                   </FormItem>
                 )}
               />
-
-              {/* Age Categories Removed */}
-
 
               {error && <p className="text-sm text-destructive text-center pt-2">{error}</p>}
             </CardContent>

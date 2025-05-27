@@ -1,4 +1,3 @@
-// frontend/src/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 
 interface User {
@@ -7,7 +6,7 @@ interface User {
   firstName?: string;
   lastName?: string;
   profilePicture?: string;
-  sex?: string; // 'M', 'F', or null
+  sex?: string; 
   city?: string;
   state?: string;
   country?: string;
@@ -28,7 +27,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const checkAuthStatus = useCallback(async (triggerLogoutOn401: boolean = false) => { // Added parameter with default value
+  const checkAuthStatus = useCallback(async (triggerLogoutOn401: boolean = false) => { 
     setIsLoading(true);
     try {
       const response = await fetch('/api/user/me', {
@@ -42,17 +41,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(true);
       } else {
         if (response.status === 401 && triggerLogoutOn401) {
-          // If a 401 occurs AND we're asked to trigger logout, update auth state.
-          // App.tsx will handle redirection due to isAuthenticated becoming false.
           setUser(null);
           setIsAuthenticated(false);
         } else if (response.status !== 401) {
-          // For non-401 errors, or 401s we're not explicitly handling by logging out here.
           setUser(null);
           setIsAuthenticated(false);
         }
-        // If it's a 401 and triggerLogoutOn401 is false (e.g., during initial load),
-        // ProtectedRoute will handle the redirection.
       }
     } catch (error) {
       console.error("Error checking auth status:", error);
@@ -61,7 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  }, []); // useCallback dependencies are empty, which is fine here.
+  }, []); 
 
   const logout = async () => {
     setUser(null);
@@ -70,7 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    checkAuthStatus(); // Initial check without triggerLogoutOn401
+    checkAuthStatus(); 
   }, [checkAuthStatus]);
 
   return (

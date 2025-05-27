@@ -8,7 +8,7 @@ import { AuthProvider } from './AuthContext.tsx';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
 
-    <AuthProvider> {/* Wrap your App component with AuthProvider */}
+    <AuthProvider> 
       <App />
     </AuthProvider>
 

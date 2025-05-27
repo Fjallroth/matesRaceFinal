@@ -1,4 +1,3 @@
-// fjallroth/matesraceremaster/matesRaceRemaster-1a602cb3e25afccd16fb0670e05de058d20788c0/frontend/src/pages/RaceDetail.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -389,14 +388,13 @@ const RaceDetail: React.FC = () => {
                   {isOrganizer && race?.hideLeaderboardUntilFinish && !raceFinished && " (Organizer View: Times visible)"}
               </CardDescription>
           </CardHeader>
-          <CardContent className="overflow-x-auto"> {/* ADDED overflow-x-auto HERE */}
+          <CardContent className="overflow-x-auto">
           {filteredForLeaderboard.length > 0 ? (
-              <Table className="text-xs sm:text-sm"> {/* ADDED text-xs sm:text-sm for smaller base text */}
+              <Table className="text-xs sm:text-sm"> 
                   <TableHeader>
                       <TableRow>
                           <TableHead className="whitespace-nowrap">Rank</TableHead>
                           <TableHead className="whitespace-nowrap">Rider</TableHead>
-                          {/* MODIFIED: Removed hidden md:table-cell, added whitespace-nowrap for all segment headers */}
                           {displaySegments.map(segment => (<TableHead key={segment.id} className="whitespace-nowrap px-2">{segment.name.length > 20 ? segment.name.substring(0,17) + "..." : segment.name}</TableHead>))}
                           <TableHead className="text-right whitespace-nowrap">Total Time</TableHead>
                       </TableRow>
@@ -409,7 +407,7 @@ const RaceDetail: React.FC = () => {
 
                           if (aCompletedAll && !bCompletedAll) return -1;
                           if (!aCompletedAll && bCompletedAll) return 1;
-                          if (!aCompletedAll && !bCompletedAll) return 0; // Keep original order if neither completed all
+                          if (!aCompletedAll && !bCompletedAll) return 0; 
 
                           const aTime = a.totalTime === null ? Infinity : (a.totalTime ?? Infinity);
                           const bTime = b.totalTime === null ? Infinity : (b.totalTime ?? Infinity);
@@ -427,7 +425,7 @@ const RaceDetail: React.FC = () => {
                               </TableCell>
                               <TableCell>
                               <div className="flex items-center">
-                                  <Avatar className="h-6 w-6 mr-2 flex-shrink-0"> {/* Added flex-shrink-0 */}
+                                  <Avatar className="h-6 w-6 mr-2 flex-shrink-0"> 
                                   <AvatarImage src={participant.profileImage || undefined} alt={participant.name} />
                                   <AvatarFallback>{participant.name?.charAt(0)?.toUpperCase() || 'P'}</AvatarFallback>
                                   </Avatar>
@@ -435,7 +433,6 @@ const RaceDetail: React.FC = () => {
                                   {isCurrentViewingParticipant && <Badge variant="outline" className="ml-2 text-xs whitespace-nowrap">You</Badge>}
                               </div>
                               </TableCell>
-                              {/* MODIFIED: Removed hidden md:table-cell, added whitespace-nowrap */}
                               {displaySegments.map(segment => (
                               <TableCell key={`${participant.id}-${segment.id}`} className="whitespace-nowrap px-2">
                                   {showThisParticipantTimes && participantCompletedAllSegments ? formatTime(participant.segmentTimes?.[segment.id.toString()]) : (participantCompletedAllSegments ? "Hidden" : "-")}
