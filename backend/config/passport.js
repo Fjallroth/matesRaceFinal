@@ -1,23 +1,19 @@
-// /config/passport.js
 import passport from "passport";
-// import { Strategy as StravaStrategy } from 'passport-strava-oauth2'; // Remove this
-import { Strategy as OAuth2Strategy } from "passport-oauth2"; // Use this
+import { Strategy as OAuth2Strategy } from "passport-oauth2";
 import User from "../models/User.js";
 import config from "./env.js";
-import axios from "axios"; // For fetching user profile from Strava API
-
+import axios from "axios";
 export default function (passportInstance) {
   passportInstance.use(
     "strava",
     new OAuth2Strategy(
       {
-        // Give it a name like 'strava'
         authorizationURL: "https://www.strava.com/oauth/authorize",
         tokenURL: "https://www.strava.com/oauth/token",
         clientID: config.STRAVA_CLIENT_ID,
         clientSecret: config.STRAVA_CLIENT_SECRET,
         callbackURL: config.STRAVA_CALLBACK_URL,
-        scope: "activity:read_all,profile:read_all", // Comma-separated string
+        scope: "activity:read_all,profile:read_all",
         passReqToCallback: true,
       },
       async (
@@ -28,8 +24,6 @@ export default function (passportInstance) {
         profileFromStrategy,
         done
       ) => {
-        // Note: passport-oauth2's 'profile' argument is often empty or minimal.
-        // We need to fetch the user profile from Strava's API using the accessToken.
         try {
           const stravaUserResponse = await axios.get(
             `${config.STRAVA_API_BASE_URL}/athlete`,
@@ -37,7 +31,7 @@ export default function (passportInstance) {
               headers: { Authorization: `Bearer ${accessToken}` },
             }
           );
-          const stravaProfile = stravaUserResponse.data; // This is the Strava athlete object
+          const stravaProfile = stravaUserResponse.data;
 
           if (!stravaProfile || !stravaProfile.id) {
             return done(
@@ -103,7 +97,7 @@ export default function (passportInstance) {
   );
 
   passportInstance.serializeUser((user, done) => {
-    console.log("Serializing user (id):", user.id); // user.id is Mongoose _id
+    console.log("Serializing user (id):", user.id);
     done(null, user.id);
   });
 

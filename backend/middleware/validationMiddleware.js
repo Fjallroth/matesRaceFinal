@@ -1,11 +1,10 @@
-// /middleware/validationMiddleware.js
 import createError from "http-errors";
 
 export const validateRequest = (schema, property = "body") => {
   return (req, res, next) => {
     const { error, value } = schema.validate(req[property], {
-      abortEarly: false, // Return all errors
-      stripUnknown: true, // Remove unknown keys
+      abortEarly: false,
+      stripUnknown: true,
     });
 
     if (error) {
@@ -15,7 +14,7 @@ export const validateRequest = (schema, property = "body") => {
       return next(createError(400, errorMessage, { details: error.details }));
     }
 
-    req[property] = value; // Assign validated and possibly transformed value
+    req[property] = value;
     return next();
   };
 };

@@ -1,45 +1,31 @@
-// /services/stravaService.js
 import axios from "axios";
 import createError from "http-errors";
 import config from "../config/env.js";
-import User from "../models/User.js"; // Assuming models are directly importable
+import User from "../models/User.js";
 import Race from "../models/Race.js";
 import Participant from "../models/Participant.js";
-// ParticipantSegmentResult is embedded, so not imported as a separate model for direct ops here
 
 const stravaApi = axios.create({
   baseURL: config.STRAVA_API_BASE_URL,
 });
 
-/**
- * Retrieves the access token for the authenticated user.
- * @param {object} passportUser - The user object from Passport (req.user)
- * @returns {string} The Strava access token.
- * @throws {Error} If the token is not available.
- */
 const getAccessToken = async (passportUser) => {
   if (!passportUser || !passportUser.stravaId) {
     throw createError(401, "User principal is invalid for Strava API access.");
   }
-  // The user object from deserializeUser should have the tokens if they are stored
   if (!passportUser.userStravaAccess) {
-    // Potentially try to refresh token here if you have a refresh token
-    // For now, assume it's up-to-date or user needs to re-auth
     throw createError(
       401,
       "Strava access token not available. Please re-authenticate."
     );
   }
-  // Check for token expiry if `userTokenExpire` is available
   if (
     passportUser.userTokenExpire &&
     new Date(passportUser.userTokenExpire) < new Date()
   ) {
-    // TODO: Implement token refresh logic here if `userStravaRefresh` is available
     console.warn(
       `Strava token for user ${passportUser.stravaId} has expired. Refresh needed.`
     );
-    // For now, throw error. In a real app, you'd attempt refresh.
     throw createError(
       401,
       "Strava access token has expired. Please re-authenticate or implement refresh logic."
@@ -48,13 +34,6 @@ const getAccessToken = async (passportUser) => {
   return passportUser.userStravaAccess;
 };
 
-/**
- * Fetches user activities from Strava API within a given date range.
- * @param {object} passportUser - The authenticated user from Passport.
- * @param {Date} raceStartDate - The start date of the race.
- * @param {Date} raceEndDate - The end date of the race.
- * @returns {Promise<Array<object>>} A list of Strava activity DTOs.
- */
 export const getUserActivities = async (
   passportUser,
   raceStartDate,
@@ -74,7 +53,7 @@ export const getUserActivities = async (
       params: {
         before: beforeTimestamp,
         after: afterTimestamp,
-        per_page: 50, // Match Java service
+        per_page: 50,
       },
     });
 
@@ -95,9 +74,9 @@ export const getUserActivities = async (
       .map((activity) => ({
         id: activity.id,
         name: activity.name,
-        startDateLocal: activity.start_date_local, // ISO 8601 format
-        distance: activity.distance, // in meters
-        elapsedTime: activity.elapsed_time, // in seconds
+        startDateLocal: activity.start_date_local,
+        distance: activity.distance,
+        elapsedTime: activity.elapsed_time,
         type: activity.type,
       }));
   } catch (err) {
@@ -120,12 +99,6 @@ export const getUserActivities = async (
   }
 };
 
-/**
- * Processes and saves segment results from a submitted Strava activity for a race participant.
- * @param {object} passportUser - The authenticated user from Passport.
- * @param {string} raceId - The ID of the race.
- * @param {number} stravaActivityId - The ID of the Strava activity.
- */
 export const processAndSaveActivityResults = async (
   passportUser,
   raceId,
@@ -134,7 +107,7 @@ export const processAndSaveActivityResults = async (
   const accessToken = await getAccessToken(passportUser);
   const userStravaId = passportUser.stravaId;
 
-  const user = await User.findById(passportUser.id); // passportUser.id is the MongoDB ObjectId
+  const user = await User.findById(passportUser.id);
   if (!user)
     throw createError(404, `User not found with DB ID: ${passportUser.id}`);
 
@@ -143,11 +116,6 @@ export const processAndSaveActivityResults = async (
 
   let participant = await Participant.findOne({ race: raceId, user: user.id });
   if (!participant) {
-    // This case should ideally be handled by the joinRace endpoint.
-    // If a user tries to submit to a race they haven't joined.
-    // The RaceApiController in Java creates participant if not found during submission,
-    // but it's generally better if they are already a participant.
-    // For now, we'll throw an error if they are not a participant.
     console.warn(
       `User ${userStravaId} (DB ID ${user.id}) tried to submit to race ${raceId} without being a participant.`
     );
@@ -164,7 +132,7 @@ export const processAndSaveActivityResults = async (
     );
     const response = await stravaApi.get(`/activities/${stravaActivityId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
-      params: { include_all_efforts: true }, // Ensure segment efforts are included
+      params: { include_all_efforts: true },
     });
     activityDetails = response.data;
   } catch (err) {
@@ -197,7 +165,7 @@ export const processAndSaveActivityResults = async (
     );
   }
 
-  const raceSegmentIds = race.segmentIds; // Array of numbers
+  const raceSegmentIds = race.segmentIds;
   const newSegmentResults = [];
 
   for (const effort of activityDetails.segment_efforts) {
@@ -223,7 +191,7 @@ export const processAndSaveActivityResults = async (
     }
   }
 
-  participant.segmentResults = newSegmentResults; // Replace existing results
+  participant.segmentResults = newSegmentResults;
   participant.submittedRide = true;
   participant.submittedActivityId = stravaActivityId;
 

@@ -1,4 +1,3 @@
-// server.js
 import express from "express";
 import mongoose from "mongoose";
 import session from "express-session";
@@ -14,34 +13,29 @@ import connectDB from "./config/db.js";
 import passportConfig from "./config/passport.js";
 import errorHandler from "./middleware/errorMiddleware.js";
 
-// Import controllers and middleware needed for specific route overrides
 import {
   stravaLogin as stravaLoginController,
   getCurrentUser as getCurrentUserController,
 } from "./controllers/authController.js";
 import { isAuthenticated as isAuthenticatedMiddleware } from "./middleware/authMiddleware.js";
 
-// Import routes
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import raceRoutes from "./routes/raceRoutes.js";
 
-// Import models (can be useful for app.get('models') pattern if you prefer)
 import User from "./models/User.js";
 import Race from "./models/Race.js";
 import Participant from "./models/Participant.js";
 import ParticipantSegmentResult from "./models/ParticipantSegmentResult.js";
 
-// Initialize Express app
 const app = express();
 
 if (config.NODE_ENV === "production") {
   app.set("trust proxy", 1);
 }
-// Connect to MongoDB
+
 connectDB();
 
-// Middleware
 app.use(helmet());
 if (config.NODE_ENV === "development") {
   app.use(morgan("dev"));
@@ -56,7 +50,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Session configuration
 app.use(
   session({
     secret: config.SESSION_SECRET,
@@ -84,50 +77,36 @@ app.use((req, res, next) => {
   next();
 });
 
-// Passport middleware initialization
 passportConfig(passport);
 app.use(passport.initialize());
 app.use(passport.session());
 
 app.set("models", { User, Race, Participant, ParticipantSegmentResult });
 
-// --- Specific Route Overrides & Aliases ---
-
-// Alias for Spring Boot default OAuth2 login initiation path
-// The frontend calls this directly on the backend URL.
 app.get("/oauth2/authorization/strava", stravaLoginController);
 
-// Route for frontend's expectation of /api/user/me (proxied by Vite)
 app.get("/api/user/me", isAuthenticatedMiddleware, getCurrentUserController);
 
-// --- Main API Routers ---
 app.get("/", (req, res) => res.send("MatesRace API Running!"));
-app.use("/api/auth", authRoutes); // For other auth routes like /callback, /logout
+app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/races", raceRoutes);
 
-// Global error handler
 app.use(errorHandler);
+app.get("/api/health", (req, res) => {
+  res.status(200).send("OK");
+});
 
 const startServer = async () => {
   try {
-    await connectDB(); // Ensure DB is connected before starting the server
+    await connectDB();
 
-    // Passport middleware initialization (depends on User model, so after DB connect)
-    passportConfig(passport); // Pass the passport instance
+    passportConfig(passport);
     app.use(passport.initialize());
     app.use(passport.session());
 
-    // Make models accessible (alternative pattern)
     app.set("models", { User, Race, Participant, ParticipantSegmentResult });
 
-    // --- Specific Route Overrides & Aliases ---
-    // ... (your existing route overrides)
-
-    // --- Main API Routers ---
-    // ... (your existing app.use for routes)
-
-    // Global error handler (must be last middleware using routes)
     app.use(errorHandler);
 
     app.listen(config.PORT, () => {

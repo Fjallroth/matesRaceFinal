@@ -1,4 +1,3 @@
-// /models/User.js
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
@@ -12,7 +11,6 @@ const userSchema = new mongoose.Schema({
     type: String,
   },
   userSex: {
-    // M or F typically from Strava
     type: String,
   },
   userCity: {
@@ -25,7 +23,6 @@ const userSchema = new mongoose.Schema({
     type: String,
   },
   userStravaAccess: {
-    // Access Token
     type: String,
   },
   userStravaFirstName: {
@@ -35,15 +32,12 @@ const userSchema = new mongoose.Schema({
     type: String,
   },
   userStravaPic: {
-    // URL to profile picture
     type: String,
   },
   userStravaRefresh: {
-    // Refresh Token
     type: String,
   },
   userTokenExpire: {
-    // When the access token expires
     type: Date,
   },
   createdAt: {

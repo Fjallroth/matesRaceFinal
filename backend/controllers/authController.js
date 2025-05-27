@@ -1,4 +1,3 @@
-// /controllers/authController.js
 import passport from "passport";
 import config from "../config/env.js";
 import createError from "http-errors";
@@ -32,7 +31,6 @@ export const stravaCallback = (req, res, next) => {
     console.log("Is req.session available before logIn?", !!req.session);
     console.log("Is req._passport available before logIn?", !!req._passport);
 
-    // **Diagnostic Step: Ensure req._passport.session is initialized**
     if (req._passport && typeof req._passport.session === "undefined") {
       console.warn(
         "req._passport.session was undefined, manually initializing as {}."

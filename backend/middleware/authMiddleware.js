@@ -1,4 +1,3 @@
-// /middleware/authMiddleware.js
 import createError from "http-errors";
 import Race from "../models/Race.js";
 import mongoose from "mongoose";
@@ -15,7 +14,7 @@ export const isAuthenticated = (req, res, next) => {
 
 export const isRaceOrganizer = async (req, res, next) => {
   try {
-    const { id: raceId } = req.params; // <<< CHANGED: Destructure 'id' and alias to 'raceId'
+    const { id: raceId } = req.params;
     console.log(
       "[isRaceOrganizer] Received raceId (from req.params.id):",
       raceId
@@ -51,7 +50,7 @@ export const isRaceOrganizer = async (req, res, next) => {
         )
       );
     }
-    req.race = race; // Attach race to request for next handler (deleteRace controller)
+    req.race = race;
     return next();
   } catch (err) {
     console.error("[isRaceOrganizer] Error:", err);

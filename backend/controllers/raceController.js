@@ -1,4 +1,3 @@
-// /controllers/raceController.js
 import createError from "http-errors";
 import mongoose from "mongoose";
 import Race from "../models/Race.js";
@@ -9,7 +8,6 @@ import {
   processAndSaveActivityResults as processActivityForRace,
 } from "../services/stravaService.js";
 
-// Helper to convert DB Race to RaceResponseDTO structure
 const convertToRaceResponseDTO = async (
   race,
   includeParticipantsDetails = false,
@@ -19,10 +17,8 @@ const convertToRaceResponseDTO = async (
 
   let populatedRace = race;
   if (race.populated && !race.populated("organiser")) {
-    // Check if populated method exists
     populatedRace = await race.populate("organiser");
   } else if (!race.organiser.kind) {
-    // Fallback if organiser is just an ID
     populatedRace = await Race.findById(race._id).populate("organiser").exec();
   }
 
@@ -33,9 +29,8 @@ const convertToRaceResponseDTO = async (
     const participants = await Participant.find({ race: race._id })
       .populate({
         path: "user",
-        model: "User", // Explicitly specify the model name
+        model: "User",
       })
-      // .populate("segmentResults"); // segmentResults is embedded, no need to populate explicitly
       .exec();
     participantCount = participants.length;
     participantDTOs = participants.map((p) =>
@@ -49,7 +44,7 @@ const convertToRaceResponseDTO = async (
   if (
     currentUserPassport &&
     populatedRace.organiser &&
-    populatedRace.organiser._id && // Check if _id exists
+    populatedRace.organiser._id &&
     populatedRace.organiser._id.toString() === currentUserPassport.id.toString()
   ) {
     racePassword = race.password;
@@ -73,7 +68,7 @@ const convertToRaceResponseDTO = async (
 };
 
 const convertToUserSummaryDTO = (user) => {
-  if (!user || !user.stravaId) return null; // Added check for user.stravaId
+  if (!user || !user.stravaId) return null;
   return {
     stravaId: user.stravaId,
     displayName: user.displayName,
@@ -89,13 +84,12 @@ const convertToParticipantSummaryDTO = (
   raceContext,
   currentUserPassport
 ) => {
-  if (!participant || !participant.user) return null; // Added check for participant.user
+  if (!participant || !participant.user) return null;
 
   const currentUserId = currentUserPassport
     ? currentUserPassport.stravaId
     : null;
 
-  // Ensure raceContext.organiser is populated and has an _id
   const organiserId =
     raceContext.organiser && raceContext.organiser._id
       ? raceContext.organiser._id.toString()
@@ -111,7 +105,6 @@ const convertToParticipantSummaryDTO = (
   const raceFinished =
     raceContext.endDate && new Date(raceContext.endDate) < new Date();
 
-  // Ensure participant.user is populated and has stravaId
   const participantStravaId =
     participant.user && participant.user.stravaId
       ? participant.user.stravaId
@@ -145,7 +138,6 @@ const convertToParticipantSummaryDTO = (
   };
 };
 
-// POST /api/races - Create Race
 export const createRace = async (req, res, next) => {
   try {
     const {
@@ -204,7 +196,6 @@ export const createRace = async (req, res, next) => {
   }
 };
 
-// GET /api/races - Get All Races (modified to filter for user)
 export const getAllRaces = async (req, res, next) => {
   try {
     const currentUser = req.user;
@@ -212,28 +203,23 @@ export const getAllRaces = async (req, res, next) => {
       return next(createError(401, "User not authenticated. Please log in."));
     }
 
-    // Find races where the current user is a participant
     const participations = await Participant.find({ user: currentUser._id })
       .select("race")
-      .lean(); // Use .lean() for performance if only IDs are needed initially
+      .lean();
 
     const participatingRaceIds = participations.map((p) => p.race);
 
-    // Find races organized by the current user OR races they are participating in
     const races = await Race.find({
       $or: [
         { organiser: currentUser._id },
         { _id: { $in: participatingRaceIds } },
       ],
     })
-      .populate("organiser") // Populate organiser details for all fetched races
+      .populate("organiser")
       .sort({ createdAt: -1 });
 
     const raceDTOs = await Promise.all(
       races.map(async (race) => {
-        // For convertToRaceResponseDTO, ensure the race object passed has the organiser populated
-        // If Race.find().populate() already did this, great. If not, you might need an explicit populate call
-        // or ensure the object structure matches what convertToRaceResponseDTO expects.
         let detailedRace = race;
         if (
           !race.populated("organiser") &&
@@ -254,14 +240,12 @@ export const getAllRaces = async (req, res, next) => {
   }
 };
 
-// GET /api/races/:id - Get Race By ID
 export const getRaceById = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return next(createError(400, "Invalid Race ID format."));
     }
-    // Ensure the race exists and the user is either an organizer or participant
     const race = await Race.findById(id).populate("organiser");
     if (!race) {
       return next(createError(404, `Race not found with ID: ${id}`));
@@ -276,9 +260,6 @@ export const getRaceById = async (req, res, next) => {
     });
 
     if (!isOrganiser && !isParticipant) {
-      // If the backend is strict and this endpoint is also for general discovery (which it isn't after previous change)
-      // you might allow public races. But since all races are private and /api/races is filtered,
-      // this check ensures only relevant users can access specific race details.
       return next(
         createError(403, "You are not authorized to view this race.")
       );
@@ -292,7 +273,6 @@ export const getRaceById = async (req, res, next) => {
   }
 };
 
-// PUT /api/races/:id - Edit Race
 export const editRace = async (req, res, next) => {
   try {
     const { id: raceId } = req.params;
@@ -319,7 +299,6 @@ export const editRace = async (req, res, next) => {
         if (key === "startDate" || key === "endDate") {
           raceToUpdate[key] = new Date(updates[key]);
         } else if (key === "password" && updates[key] === "") {
-          // Ignore if password is empty string
         } else {
           raceToUpdate[key] = updates[key];
         }
@@ -346,7 +325,6 @@ export const editRace = async (req, res, next) => {
   }
 };
 
-// DELETE /api/races/:id - Delete Race
 export const deleteRace = async (req, res, next) => {
   try {
     const { id: raceId } = req.params;
@@ -376,9 +354,6 @@ export const deleteRace = async (req, res, next) => {
   }
 };
 
-// GET /api/races/participating - Get races user is participating in (redundant if /api/races is filtered)
-// This endpoint can be kept for clarity or removed if /api/races now serves the same purpose.
-// For now, let's assume it might be used by a different part of the frontend or offers a slightly different view.
 export const getParticipatingRaces = async (req, res, next) => {
   try {
     const currentUser = req.user;
@@ -403,7 +378,6 @@ export const getParticipatingRaces = async (req, res, next) => {
   }
 };
 
-// POST /api/races/:raceId/join - Join a race
 export const joinRace = async (req, res, next) => {
   try {
     const { raceId } = req.params;
@@ -430,7 +404,6 @@ export const joinRace = async (req, res, next) => {
 
     if (race.isPrivate) {
       if (race.password !== password) {
-        // Assuming plaintext for race entry passwords
         return next(createError(401, "Incorrect password for private race."));
       }
     }
@@ -465,7 +438,6 @@ export const joinRace = async (req, res, next) => {
   }
 };
 
-// DELETE /api/races/:raceId/participants/:participantId - Delete/Remove a participant
 export const removeParticipant = async (req, res, next) => {
   try {
     const { raceId, participantId } = req.params;
@@ -510,7 +482,6 @@ export const removeParticipant = async (req, res, next) => {
   }
 };
 
-// GET /api/races/:raceId/strava-activities - Get Strava activities for the race period
 export const getStravaActivitiesForRace = async (req, res, next) => {
   try {
     const { raceId } = req.params;
@@ -547,7 +518,6 @@ export const getStravaActivitiesForRace = async (req, res, next) => {
   }
 };
 
-// POST /api/races/:raceId/submit-activity - Submit a Strava activity for the race
 export const submitStravaActivityForRace = async (req, res, next) => {
   try {
     const { raceId } = req.params;

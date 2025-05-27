@@ -1,4 +1,3 @@
-// /routes/raceRoutes.js
 import express from "express";
 import {
   createRace,
@@ -25,15 +24,13 @@ import {
 } from "../dtos/raceDTOs.js";
 
 const router = express.Router();
-
-// === Race CRUD ===
 router.post(
   "/",
   isAuthenticated,
   validateRequest(raceCreateSchema),
   createRace
 );
-router.get("/", isAuthenticated, getAllRaces); // Publicly viewable in Spring, make authenticated here
+router.get("/", isAuthenticated, getAllRaces);
 router.get("/:id", isAuthenticated, getRaceById);
 router.put(
   "/:id",
@@ -44,8 +41,7 @@ router.put(
 );
 router.delete("/:id", isAuthenticated, isRaceOrganizer, deleteRace);
 
-// === Race Participation ===
-router.get("/participating", isAuthenticated, getParticipatingRaces); // Get races user is in
+router.get("/participating", isAuthenticated, getParticipatingRaces);
 router.post(
   "/:raceId/join",
   isAuthenticated,
@@ -56,9 +52,7 @@ router.delete(
   "/:raceId/participants/:participantId",
   isAuthenticated,
   removeParticipant
-); // Organizer or self can remove
-
-// === Strava Activity Interaction ===
+);
 router.get(
   "/:raceId/strava-activities",
   isAuthenticated,
