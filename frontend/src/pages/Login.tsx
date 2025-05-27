@@ -22,7 +22,7 @@ const Login: React.FC = () => {
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-primary/5 via-background to-background p-4">
       <div className="w-full max-w-5xl mx-auto">
         <div className="text-center mb-10">
-          <img src="/logo.png" alt="MatesRace Logo" className="h-16 w-auto mx-auto mb-4" /> {/* Assuming logo.png is in public */}
+          {/*<img src="/logo.png" alt="MatesRace Logo" className="h-16 w-auto mx-auto mb-4" /> no logo for now*/}
           <h1 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
             Welcome to MatesRace!
           </h1>

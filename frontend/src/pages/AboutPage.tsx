@@ -13,7 +13,7 @@ const AboutPage: React.FC = () => {
     <div className="container mx-auto py-12 px-4 md:px-6">
       <Card className="max-w-3xl mx-auto">
         <CardHeader className="text-center">
-          <div className="inline-flex items-center justify-center mb-4"> {/*Need to add a logo*/}
+          <div className="inline-flex items-center justify-center mb-4"> 
             <img src="/logo.png" alt="MatesRace Logo" className="h-12 w-auto mr-3" />
             <CardTitle className="text-3xl md:text-4xl font-bold">About MatesRace</CardTitle>
           </div>
