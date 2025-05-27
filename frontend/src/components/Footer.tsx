@@ -14,7 +14,7 @@ const Footer: React.FC = () => {
           <p className="text-sm md:text-base leading-relaxed mt-3">
             I am offering this for free and I want to keep it that way, I can't be bleeding folks dry with yet another subscription. 
             That being said if you are enjoying it and want help keep the servers online, I would really appreciate a tip or donation. 
-            I will try my best to maintain this and your encouragement does a long way!
+            I will try my best to maintain this and your encouragement goes a long way!
           </p>
           <div className="mt-4">
             <a
