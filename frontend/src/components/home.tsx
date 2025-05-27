@@ -13,7 +13,7 @@ import { useAuth } from "@/AuthContext";
 import { useToast } from "@/components/ui/use-toast"; 
 import { Coffee } from 'lucide-react';
 
-const kofiLink = "https://www.buymeacoffee.com/yourusername"; 
+const kofiLink = "https://ko-fi.com/crispy100"
 
 const Home = () => {
   const navigate = useNavigate();

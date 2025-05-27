@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { Coffee, Github, Mail, Zap, Users, BarChartBig, Trophy, MountainSnow, Wrench } from 'lucide-react';
 
 const AboutPage: React.FC = () => {
-  const kofiLink = "https://www.buymeacoffee.com/yourusername"; 
+  const kofiLink = "https://ko-fi.com/crispy100"
   const githubRepoLink = "https://github.com/Fjallroth/matesRaceFinal"; 
   const contactEmail = "info@matesrace.com"; 
 
