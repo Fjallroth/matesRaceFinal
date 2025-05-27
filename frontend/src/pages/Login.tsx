@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { Zap, Users, BarChartBig, Trophy, HelpCircle, Mountain } from "lucide-react";
+import { Zap, Users, BarChartBig, Trophy, HelpCircle, Mountain, List } from "lucide-react";
 
 const Login: React.FC = () => {
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
@@ -36,14 +36,14 @@ const Login: React.FC = () => {
             <h2 className="text-2xl font-semibold text-foreground mb-1">Tired of duct-taping watches to handlebars?</h2>
             <p className="text-muted-foreground text-sm mb-4"> (Yes, that's genuinely how this whole thing started!) </p>
             <p className="text-foreground/90 leading-relaxed">
-              MatesRace is for cyclists who love a good, friendly challenge. Ever wanted an easy way to see who's quickest on your favorite local Strava segments without the faff of spreadsheets or manually checking leaderboards? That's exactly why MatesRace was built.
+              MatesRace is for cyclists who love some friendly competition. Ever wanted an easy way to see who's quickest on your favorite local Strava segments without the faff of spreadsheets or manually checking leaderboards? That's exactly why MatesRace was built.
             </p>
 
             <h3 className="text-xl font-semibold text-foreground pt-3">Here's the Lowdown:</h3>
             <ul className="space-y-3 text-muted-foreground">
               <li className="flex items-start">
                 <Zap className="h-5 w-5 mr-3 mt-1 text-yellow-500 flex-shrink-0" />
-                <span><strong>Pick Your Battleground:</strong> Organizers choose specific Strava segments for the race.</span>
+                <span><strong>Pick Your Racecourse:</strong> Organizers choose specific Strava segments for the race.</span>
               </li>
               <li className="flex items-start">
                 <Users className="h-5 w-5 mr-3 mt-1 text-blue-500 flex-shrink-0" />
@@ -55,12 +55,13 @@ const Login: React.FC = () => {
               </li>
               <li className="flex items-start">
                 <Trophy className="h-5 w-5 mr-3 mt-1 text-amber-500 flex-shrink-0" />
-                <span><strong>Leaderboard Glory:</strong> See how you and your mates stack up. Simple, fair, and fun!</span>
+                <span><strong>Leaderboard:</strong> See how you and your mates stack up. Simple, fair, and fun!</span>
               </li>
             </ul>
             <p className="text-sm text-center text-muted-foreground/80 pt-4">
               <strong>Heads up:</strong> MatesRace relies on Strava for all activity and segment data. You'll need a Strava account (it's free!) to participate in races. We use it to securely verify you and fetch your segment efforts.
             </p>
+            
           </div>
 
           <Card className="shadow-xl">
@@ -81,9 +82,20 @@ const Login: React.FC = () => {
                 <Mountain className="w-5 h-5 mr-2.5" /> {/* Strava-like icon */}
                 Connect with Strava
               </Button>
-              <p className="text-xs text-muted-foreground text-center max-w-xs px-2">
-                MatesRace uses Strava for authentication and to automatically fetch your segment results for races you're part of. We'll never post to Strava or share your data without your permission.
-              </p>
+              <p className="text-sm text-center text-muted-foreground/80 pt-4">
+              <strong>Data:</strong> Due to your login with Strava, we will never see your contact details meaning we won't be sending you any marketing spam and we will not sell your data!
+            </p>
+            <p className="text-sm text-center text-muted-foreground/80 pt-4">
+              <strong>What data does get stored?</strong> When you authenticate, the following Strava details are saved in a database which is protected with 2FA. We will never sell or pass on your data to a third party. Location data will help with selecting a server location to best serve the majority of users.
+              <List>
+                <li>Your Display Name</li>
+                <li>Your Sex which you selected on Strava</li>
+                <li>The city you told Strava you live in</li>
+                <li>The state you told Strava you live in</li>
+                <li>The country you told strava you live in</li>
+                <li>A url for your profile picture is saved</li>
+              </List>
+            </p>
             </CardContent>
             <CardFooter className="flex flex-col items-center justify-center border-t pt-6 pb-6">
               <div className="text-center text-sm text-muted-foreground">
