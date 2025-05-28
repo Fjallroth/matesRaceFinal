@@ -626,7 +626,7 @@ return (
       </div>
     )}
 
-    <div className="flex items-start">
+    {/* <div className="flex items-start">
       <Share2 className="mr-3 mt-1 text-muted-foreground flex-shrink-0" size={18} />
       <div>
         <p className="text-sm font-medium">How to Share</p>
@@ -653,7 +653,7 @@ return (
           </Button>
         </div>
       </div>
-    </div>
+    </div> */}
   </div>
 </div>
 )}
