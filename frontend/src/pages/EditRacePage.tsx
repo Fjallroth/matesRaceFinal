@@ -10,9 +10,9 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, ArrowLeft, AlertTriangle, Plus, X, Users } from 'lucide-react';
+import { Loader2, ArrowLeft, AlertTriangle, Plus, X } from 'lucide-react';
 import { Race } from '@/types/raceTypes';
-import { parseISO, format } from 'date-fns';
+import { parseISO, format as formatDateFn } from 'date-fns'; 
 import {
   Form,
   FormControl,
@@ -23,21 +23,26 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
+
 const raceFormSchema = z.object({
   raceName: z.string().min(3, 'Race name must be at least 3 characters long').max(100),
   raceInfo: z.string().max(500, 'Race info cannot exceed 500 characters').optional(),
-  startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
-  endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
+  startDateTime: z.string().refine((val) => val === '' || !isNaN(Date.parse(val)), { message: "Invalid start date/time" }),
+  endDateTime: z.string().refine((val) => val === '' || !isNaN(Date.parse(val)), { message: "Invalid end date/time" }),
   segments: z.array(z.string()).min(1, {
     message: "At least one segment is required.",
   }),
-
   password: z.string().optional(),
   hideLeaderboardUntilFinish: z.boolean().default(false),
-  useSexCategories: z.boolean().default(false), 
-}).refine(data => new Date(data.endDate) > new Date(data.startDate), {
-  message: "End date must be after start date.",
-  path: ["endDate"],
+  useSexCategories: z.boolean().default(false),
+}).refine(data => {
+    if (data.startDateTime && data.endDateTime) { 
+        return new Date(data.endDateTime) > new Date(data.startDateTime);
+    }
+    return true; 
+}, {
+  message: "End date and time must be after start date and time.",
+  path: ["endDateTime"], 
 });
 
 type RaceFormData = z.infer<typeof raceFormSchema>;
@@ -58,8 +63,8 @@ const EditRacePage: React.FC = () => {
     defaultValues: {
       raceName: '',
       raceInfo: '',
-      startDate: '',
-      endDate: '',
+      startDateTime: '',
+      endDateTime: '',
       segments: [],
       password: '',
       hideLeaderboardUntilFinish: false,
@@ -96,12 +101,12 @@ const EditRacePage: React.FC = () => {
       setRace(data);
       setValue('raceName', data.raceName);
       setValue('raceInfo', data.raceInfo || '');
-      setValue('startDate', format(parseISO(data.startDate), "yyyy-MM-dd'T'HH:mm"));
-      setValue('endDate', format(parseISO(data.endDate), "yyyy-MM-dd'T'HH:mm"));
+      setValue('startDateTime', formatDateFn(parseISO(data.startDate), "yyyy-MM-dd'T'HH:mm"));
+      setValue('endDateTime', formatDateFn(parseISO(data.endDate), "yyyy-MM-dd'T'HH:mm"));
       setValue('segments', data.segmentIds.map(String));
       setValue('hideLeaderboardUntilFinish', data.hideLeaderboardUntilFinish);
-      setValue('useSexCategories', data.useSexCategories || false); 
-      setValue('password', ''); 
+      setValue('useSexCategories', data.useSexCategories || false);
+      setValue('password', '');
     } catch (err: any) {
         setError(err.message);
         console.error("Error fetching race details:", err);
@@ -154,19 +159,18 @@ const EditRacePage: React.FC = () => {
       .filter(id => !isNaN(id) && id > 0);
 
     if (segmentIdsAsNumbers.length !== data.segments.length) {
-      toast({});
+      toast({variant: "destructive", title: "Invalid Segments", description: "One or more segment IDs are invalid."});
       setIsSubmitting(false);
       return;
     }
 
-
-    const raceUpdatePayload: any = { 
+    const raceUpdatePayload: any = {
       raceName: data.raceName,
       description: data.raceInfo,
-      startDate: new Date(data.startDate).toISOString(),
-      endDate: new Date(data.endDate).toISOString(),
+      startDate: new Date(data.startDateTime).toISOString(),
+      endDate: new Date(data.endDateTime).toISOString(),
       segmentIds: segmentIdsAsNumbers,
-      privacy: "private", 
+      isPrivate: true,
       hideLeaderboardUntilFinish: data.hideLeaderboardUntilFinish,
       useSexCategories: data.useSexCategories,
     };
@@ -233,7 +237,7 @@ const EditRacePage: React.FC = () => {
         </Button>
       </div>
     ); }
-  if (!race) { /* ... */ return (
+  if (!race) { return (
       <div className="container mx-auto px-4 py-8 text-center">
         <p className="text-muted-foreground">Race data not available.</p>
         <Button onClick={() => navigate('/my-races')} variant="outline">
@@ -259,10 +263,10 @@ const EditRacePage: React.FC = () => {
                 <FormField control={control} name="raceName" render={({ field }) => ( <FormItem><FormLabel>Race Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={control} name="raceInfo" render={({ field }) => ( <FormItem><FormLabel>Race Information (Optional)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField control={control} name="startDate" render={({ field }) => ( <FormItem><FormLabel>Start Date & Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={control} name="endDate" render={({ field }) => ( <FormItem><FormLabel>End Date & Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={control} name="startDateTime" render={({ field }) => ( <FormItem><FormLabel>Start Date & Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={control} name="endDateTime" render={({ field }) => ( <FormItem><FormLabel>End Date & Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem> )} />
                 </div>
-                <FormField control={control} name="segments" render={() => ( <FormItem> <FormLabel>Strava Segments</FormLabel> <div className="flex items-center space-x-2"> <Input value={segmentInput} onChange={(e) => setSegmentInput(e.target.value)} className="flex-1" /> <Button type="button" onClick={handleAddSegment} size="icon"><Plus className="h-4 w-4" /></Button> </div> <FormDescription>Add one or more Strava segments.</FormDescription> <FormMessage /> {currentSegments.length > 0 && ( <div className="mt-4"><Card><CardContent className="p-4"><h4 className="text-sm font-medium mb-2">Added Segments:</h4><ul className="space-y-2"> {currentSegments.map((segment, index) => ( <li key={index} className="flex items-center justify-between bg-muted p-2 rounded-md"> <div className="flex items-center overflow-hidden"><Badge variant="secondary" className="mr-2 flex-shrink-0">{index + 1}</Badge><span className="text-sm truncate">{segment}</span></div> <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveSegment(index)} className="flex-shrink-0"><X className="h-4 w-4" /></Button> </li> ))} </ul></CardContent></Card></div> )} </FormItem> )} />
+                <FormField control={control} name="segments" render={() => ( <FormItem> <FormLabel>Strava Segments</FormLabel> <div className="flex items-center space-x-2"> <Input value={segmentInput} onChange={(e) => setSegmentInput(e.target.value)} className="flex-1" placeholder="Segment URL or ID"/> <Button type="button" onClick={handleAddSegment} size="icon"><Plus className="h-4 w-4" /></Button> </div> <FormDescription>Add one or more Strava segments.</FormDescription> <FormMessage /> {currentSegments.length > 0 && ( <div className="mt-4"><Card><CardContent className="p-4"><h4 className="text-sm font-medium mb-2">Added Segments:</h4><ul className="space-y-2"> {currentSegments.map((segment, index) => ( <li key={index} className="flex items-center justify-between bg-muted p-2 rounded-md"> <div className="flex items-center overflow-hidden"><Badge variant="secondary" className="mr-2 flex-shrink-0">{index + 1}</Badge><span className="text-sm truncate">{segment}</span></div> <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveSegment(index)} className="flex-shrink-0"><X className="h-4 w-4" /></Button> </li> ))} </ul></CardContent></Card></div> )} </FormItem> )} />
               <FormField
                 control={control}
                 name="password"

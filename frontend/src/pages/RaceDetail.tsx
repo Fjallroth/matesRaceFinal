@@ -350,12 +350,16 @@ const RaceDetail: React.FC = () => {
     };
 
     const formatDate = (dateString?: string): string => {
-        if (!dateString) return "N/A";
-        try {
-            const date = parseISO(dateString);
-            return isValid(date) ? format(date, "MMM d, yyyy h:mm a") : "Invalid Date";
-        } catch (e) { return "Date Error"; }
-    };
+    if (!dateString) return "N/A";
+    try {
+        const date = parseISO(dateString);
+        return isValid(date) ? format(date, "h:mm a, d MMM yyyy") : "Invalid Date";
+    } catch (e) {
+        console.error("Error formatting date:", e);
+        return "Date Error";
+    }
+};
+
 
     const getRaceStatus = (startDate?: string, endDate?: string): "not_started" | "ongoing" | "finished" => {
         if (!startDate || !endDate) return "not_started";

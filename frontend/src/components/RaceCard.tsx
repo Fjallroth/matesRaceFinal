@@ -9,15 +9,16 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import { Users, Info, Lock, Unlock, Edit, Trash2, Settings2 } from "lucide-react"; 
-import { RaceOrganiser } from "@/types/raceTypes"; 
+import { format, parseISO } from "date-fns";
+import { Users, Info, Lock, Unlock, Edit, Trash2, Settings2, Clock } from "lucide-react"; // Added Clock
+import { RaceOrganiser } from "@/types/raceTypes";
+
 interface RaceCardProps {
-  id: string; 
+  id: string;
   name: string;
   status: "upcoming" | "ongoing" | "finished";
-  startDate: Date;
-  endDate: Date;
+  startDate: Date; 
+  endDate: Date;   
   participantCount: number;
   organizer: RaceOrganiser;
   isPrivate: boolean;
@@ -40,7 +41,6 @@ const RaceCard: React.FC<RaceCardProps> = ({
   onClick,
   isOrganizedByCurrentUser,
   onEditRaceClick,
-  onManageParticipantsClick,
   onDeleteRaceClick,
 }) => {
   const getStatusBadgeColor = () => {
@@ -59,6 +59,17 @@ const RaceCard: React.FC<RaceCardProps> = ({
     e.stopPropagation();
     action?.();
   };
+
+ 
+  const formatDateTime = (date: Date) => {
+    try {
+        return format(date, "h:mm a, d MMM yyyy");
+    } catch (e) {
+        console.error("Error formatting date for RaceCard:", date, e);
+        return "Invalid Date";
+    }
+  };
+
 
   return (
     <Card
@@ -91,8 +102,16 @@ const RaceCard: React.FC<RaceCardProps> = ({
         </CardHeader>
         <CardContent className="flex-grow space-y-2 text-sm">
           <div>
-            <span className="font-medium text-muted-foreground">Dates: </span>
-            {format(startDate, "MMM d, yy")} - {format(endDate, "MMM d, yy")}
+            <div className="flex items-center text-muted-foreground">
+                 <Clock className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
+                <span className="font-medium">Starts: </span>
+                <span className="ml-1">{formatDateTime(startDate)}</span>
+            </div>
+             <div className="flex items-center text-muted-foreground mt-1">
+                 <Clock className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
+                <span className="font-medium">Ends: </span>
+                 <span className="ml-1">{formatDateTime(endDate)}</span>
+            </div>
           </div>
           <div className="flex items-center">
             <Users className="h-4 w-4 mr-2 text-muted-foreground" />

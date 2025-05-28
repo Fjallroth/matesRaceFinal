@@ -3,14 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { format } from "date-fns";
+import { format, parseISO, setHours, setMinutes } from "date-fns";
 import {
   Calendar as CalendarIcon,
   Plus,
   X,
   Loader2,
   AlertTriangle,
-  Users 
+  Users,
+  Clock, // Added Clock icon
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -36,6 +37,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
+
+
+const generateTimeOptions = () => {
+  const options = [];
+  for (let i = 0; i < 24; i++) {
+    for (let j = 0; j < 60; j += 15) { 
+      const hour = i.toString().padStart(2, "0");
+      const minute = j.toString().padStart(2, "0");
+      options.push(`${hour}:${minute}`);
+    }
+  }
+  return options;
+};
+const timeOptions = generateTimeOptions();
 
 const formObjectSchema = z.object({
     raceName: z.string().min(3, {
@@ -45,24 +61,40 @@ const formObjectSchema = z.object({
     startDate: z.date({
       required_error: "Start date is required.",
     }),
+    startTime: z.string({ 
+      required_error: "Start time is required.",
+    }),
     endDate: z.date({
         required_error: "End date is required.",
+    }),
+    endTime: z.string({
+      required_error: "End time is required.",
     }),
     segments: z.array(z.string()).min(1, {
       message: "At least one segment is required.",
     }),
-    password: z.string().min(4, { message: "Password is required and must be at least 4 characters." }), // Always required
+    password: z.string().min(4, { message: "Password is required and must be at least 4 characters." }),
     hideLeaderboardUntilFinish: z.boolean().default(false),
-    useSexCategories: z.boolean().default(false), 
-    
+    useSexCategories: z.boolean().default(false),
   });
 
 const formSchema = formObjectSchema.superRefine((data, ctx) => {
-    if (data.endDate <= data.startDate) {
+    const [startHour, startMinute] = data.startTime.split(":").map(Number);
+    const startDateTime = setMinutes(setHours(data.startDate, startHour), startMinute);
+
+    const [endHour, endMinute] = data.endTime.split(":").map(Number);
+    const endDateTime = setMinutes(setHours(data.endDate, endHour), endMinute);
+
+    if (endDateTime <= startDateTime) {
         ctx.addIssue({
-            code: z.ZodIssueCode.invalid_date,
-            message: "End date must be after start date.",
-            path: ["endDate"],
+            code: z.ZodIssueCode.custom,
+            message: "End date and time must be after start date and time.",
+            path: ["endDate"], 
+        });
+         ctx.addIssue({ 
+            code: z.ZodIssueCode.custom,
+            message: "End date and time must be after start date and time.",
+            path: ["endTime"],
         });
     }
 });
@@ -83,17 +115,19 @@ export default function CreateRaceForm() {
       raceName: "",
       description: "",
       startDate: new Date(),
+      startTime: "09:00",
       endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+      endTime: "17:00",   
       segments: [],
       password: "",
       hideLeaderboardUntilFinish: false,
-      useSexCategories: false, 
+      useSexCategories: false,
     },
   });
 
   const segmentsWatch = form.watch("segments");
 
-  const handleAddSegment = () => { 
+  const handleAddSegment = () => {
     if (!segmentInput.trim()) return;
     const segmentPattern = /^(https:\/\/www\.strava\.com\/segments\/\d+|\d+)$/;
     if (!segmentPattern.test(segmentInput)) {
@@ -118,7 +152,7 @@ export default function CreateRaceForm() {
     form.clearErrors("segments");
     setSegmentInput("");
    };
-  const handleRemoveSegment = (index: number) => { 
+  const handleRemoveSegment = (index: number) => {
     const updatedSegments = [...segmentsWatch];
     updatedSegments.splice(index, 1);
     form.setValue("segments", updatedSegments);
@@ -133,20 +167,25 @@ export default function CreateRaceForm() {
         .filter(id => !isNaN(id) && id > 0);
 
     if (segmentIdsAsNumbers.length !== values.segments.length) {
-         toast({ /* ... */ });
+         toast({ variant: "destructive", title: "Invalid Segments", description: "One or more segment IDs are invalid." });
         setIsLoading(false);
         return;
     }
+    const [startHour, startMinute] = values.startTime.split(":").map(Number);
+    const startDateTime = setMinutes(setHours(values.startDate, startHour), startMinute);
+
+    const [endHour, endMinute] = values.endTime.split(":").map(Number);
+    const endDateTime = setMinutes(setHours(values.endDate, endHour), endMinute);
 
     const payload = {
       raceName: values.raceName,
       description: values.description,
-      startDate: values.startDate.toISOString(),
-      endDate: values.endDate.toISOString(),
+      startDate: startDateTime.toISOString(),
+      endDate: endDateTime.toISOString(),
       segmentIds: segmentIdsAsNumbers,
-      password: values.password, 
+      password: values.password,
       hideLeaderboardUntilFinish: values.hideLeaderboardUntilFinish,
-      useSexCategories: values.useSexCategories, 
+      useSexCategories: values.useSexCategories,
     };
     console.log("Submitting payload:", payload);
 
@@ -256,16 +295,16 @@ export default function CreateRaceForm() {
                         <Button
                           variant={"outline"}
                           className={cn(
-                            "w-full pl-3 text-left font-normal",
+                            "w-full pl-3 text-left font-normal justify-start", // Added justify-start
                             !field.value && "text-muted-foreground",
                           )}
                         >
+                          <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
                           {field.value ? (
                             format(field.value, "PPP")
                           ) : (
                             <span>Pick a date</span>
                           )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
@@ -284,26 +323,51 @@ export default function CreateRaceForm() {
             />
             <FormField
               control={form.control}
+              name="startTime"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Start Time</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <Clock className="mr-2 h-4 w-4 opacity-50" />
+                        <SelectValue placeholder="Select time" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {timeOptions.map(time => (
+                        <SelectItem key={`start-${time}`} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
               name="endDate"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>When Submissions Close</FormLabel>
+                  <FormLabel>End Date</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
                           variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
+                           className={cn(
+                            "w-full pl-3 text-left font-normal justify-start", // Added justify-start
                             !field.value && "text-muted-foreground",
                           )}
                         >
+                           <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
                           {field.value ? (
                             format(field.value, "PPP")
                           ) : (
                             <span>Pick a date</span>
                           )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
@@ -314,12 +378,35 @@ export default function CreateRaceForm() {
                         onSelect={field.onChange}
                         disabled={(date) => {
                             const startDate = form.getValues("startDate");
-                            return startDate ? date <= startDate : false;
+                            return startDate ? date < startDate : false; // Prevent selecting end date before start date
                         }}
                         initialFocus
                       />
                     </PopoverContent>
                   </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="endTime"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>End Time</FormLabel>
+                   <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <Clock className="mr-2 h-4 w-4 opacity-50" />
+                        <SelectValue placeholder="Select time" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {timeOptions.map(time => (
+                        <SelectItem key={`end-${time}`} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
