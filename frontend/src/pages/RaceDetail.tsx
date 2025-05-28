@@ -576,7 +576,7 @@ return (
             </div>
             {isOrganizer && (
 <div className="mt-6 pt-6 border-t">
-  <h3 className="text-lg font-semibold mb-4">Share Race (Organizer Info)</h3>
+  <h3 className="text-lg font-semibold mb-4">Share Race: Send these details to participants so they can join your race!</h3>
   <div className="space-y-4">
     <div className="flex items-start">
       <Info className="mr-3 mt-1 text-muted-foreground flex-shrink-0" size={18} />
