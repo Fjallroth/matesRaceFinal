@@ -3,6 +3,8 @@ import createError from "http-errors";
 import config from "../config/env.js";
 import User from "../models/User.js";
 import Race from "../models/Race.js";
+import Participant from "../models/Participant.js";
+import ParticipantSegmentResults from "../models/ParticipantSegmentResults.js";
 
 const refreshStravaToken = async (stravaId, refreshToken) => {
   console.log(`Attempting to refresh Strava token for Strava ID: ${stravaId}`);
