@@ -1,61 +1,214 @@
 import axios from "axios";
 import createError from "http-errors";
 import config from "../config/env.js";
-import User from "../models/User.js";
-import Race from "../models/Race.js";
-import Participant from "../models/Participant.js";
+import User from "../models/User.js"; // Ensure User model is imported
 
-const stravaApi = axios.create({
-  baseURL: config.STRAVA_API_BASE_URL,
-});
+// stravaApi might be used for other calls, token refresh is a direct axios call
+// const stravaApi = axios.create({
+//   baseURL: config.STRAVA_API_BASE_URL,
+// });
+
+// New function to handle the token refresh logic
+const refreshStravaToken = async (stravaId, refreshToken) => {
+  console.log(`Attempting to refresh Strava token for Strava ID: ${stravaId}`);
+  try {
+    const response = await axios.post(
+      "https://www.strava.com/oauth/token",
+      null, // Strava expects form-urlencoded data, axios handles params correctly for POST
+      {
+        params: {
+          client_id: config.STRAVA_CLIENT_ID,
+          client_secret: config.STRAVA_CLIENT_SECRET,
+          grant_type: "refresh_token",
+          refresh_token: refreshToken,
+        },
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+
+    const {
+      access_token,
+      expires_at,
+      refresh_token: new_refresh_token,
+    } = response.data;
+
+    // Update the user in the database
+    const userToUpdate = await User.findOne({ stravaId });
+    if (!userToUpdate) {
+      console.error(
+        `User with Strava ID ${stravaId} not found during token refresh.`
+      );
+      // Not throwing createError here to avoid crashing if user was deleted,
+      // but logging it. The calling function will handle the inability to get a token.
+      return null;
+    }
+
+    userToUpdate.userStravaAccess = access_token;
+    userToUpdate.userTokenExpire = new Date(expires_at * 1000);
+    if (new_refresh_token) {
+      // Strava might return a new refresh token
+      userToUpdate.userStravaRefresh = new_refresh_token;
+    }
+    await userToUpdate.save();
+    console.log(
+      `Successfully refreshed Strava token for Strava ID: ${stravaId}`
+    );
+
+    return {
+      accessToken: access_token,
+      expiresAt: userToUpdate.userTokenExpire,
+      newRefreshToken: new_refresh_token || userToUpdate.userStravaRefresh,
+    };
+  } catch (error) {
+    console.error(
+      `Error refreshing Strava token for Strava ID ${stravaId}:`,
+      error.response?.data || error.message
+    );
+
+    // If refresh fails due to invalid grant (e.g., bad refresh token),
+    // clear the stored tokens to force re-authentication.
+    if (
+      error.response &&
+      (error.response.status === 400 || error.response.status === 401)
+    ) {
+      const userToClear = await User.findOne({ stravaId });
+      if (userToClear) {
+        console.warn(
+          `Clearing potentially invalid Strava tokens for Strava ID: ${stravaId} due to refresh error.`
+        );
+        userToClear.userStravaAccess = undefined;
+        userToClear.userStravaRefresh = undefined;
+        userToClear.userTokenExpire = undefined;
+        await userToClear.save();
+      }
+      // This specific error signals that re-authentication is needed.
+      throw createError(
+        401,
+        "Strava refresh token invalid or expired. Please re-authenticate with Strava."
+      );
+    }
+    // For other errors, throw a generic server error.
+    throw createError(
+      500,
+      `Failed to refresh Strava token: ${
+        error.response?.data?.message || error.message
+      }`
+    );
+  }
+};
 
 const getAccessToken = async (passportUser) => {
   if (!passportUser || !passportUser.stravaId) {
     throw createError(401, "User principal is invalid for Strava API access.");
   }
+
+  // Check if token is expired or about to expire (e.g., within the next 5 minutes)
+  const bufferTime = 5 * 60 * 1000; // 5 minutes in milliseconds
+  const tokenExpireTime = passportUser.userTokenExpire
+    ? new Date(passportUser.userTokenExpire).getTime()
+    : 0;
+
+  if (tokenExpireTime - bufferTime < Date.now()) {
+    if (tokenExpireTime === 0) {
+      console.warn(
+        `Strava token expiry not set for user ${passportUser.stravaId}. Assuming expired/invalid. Attempting refresh if possible.`
+      );
+    } else {
+      console.warn(
+        `Strava token for user ${passportUser.stravaId} has expired or is about to expire. Attempting refresh.`
+      );
+    }
+
+    if (!passportUser.userStravaRefresh) {
+      console.error(
+        `Strava refresh token not available for user ${passportUser.stravaId}. Re-authentication required.`
+      );
+      // Clear access token details if refresh token is missing, to ensure re-auth.
+      const userToClear = await User.findById(passportUser.id);
+      if (userToClear) {
+        userToClear.userStravaAccess = undefined;
+        userToClear.userTokenExpire = undefined;
+        await userToClear.save();
+      }
+      throw createError(
+        401,
+        "Strava access token expired and no refresh token available. Please re-authenticate with Strava."
+      );
+    }
+
+    try {
+      const refreshedData = await refreshStravaToken(
+        passportUser.stravaId,
+        passportUser.userStravaRefresh
+      );
+
+      if (!refreshedData) {
+        // User might have been deleted between check and refresh attempt
+        throw createError(
+          401,
+          "User not found during token refresh process. Please re-authenticate."
+        );
+      }
+
+      // Update the passportUser object in memory for the current request
+      // This is important because req.user might be a snapshot from the start of the request.
+      passportUser.userStravaAccess = refreshedData.accessToken;
+      passportUser.userTokenExpire = refreshedData.expiresAt;
+      passportUser.userStravaRefresh = refreshedData.newRefreshToken;
+
+      return refreshedData.accessToken;
+    } catch (refreshError) {
+      // refreshStravaToken already logs and throws a specific error (usually 401 or 500)
+      throw refreshError;
+    }
+  }
+
   if (!passportUser.userStravaAccess) {
-    throw createError(
-      401,
-      "Strava access token not available. Please re-authenticate."
-    );
-  }
-  if (
-    passportUser.userTokenExpire &&
-    new Date(passportUser.userTokenExpire) < new Date()
-  ) {
+    // This case implies the token was never there or cleared, and somehow not caught by expiry.
+    // Should prompt re-authentication.
     console.warn(
-      `Strava token for user ${passportUser.stravaId} has expired. Refresh needed.`
+      `Strava access token not found for user ${passportUser.stravaId}, though not detected as expired. Re-authentication advised.`
     );
     throw createError(
       401,
-      "Strava access token has expired. Please re-authenticate or implement refresh logic."
+      "Strava access token not available. Please re-authenticate with Strava."
     );
   }
+
   return passportUser.userStravaAccess;
 };
+
+// The rest of your stravaService.js (getUserActivities, processAndSaveActivityResults)
+// should remain the same, as they already use getAccessToken.
 
 export const getUserActivities = async (
   passportUser,
   raceStartDate,
   raceEndDate
 ) => {
-  const accessToken = await getAccessToken(passportUser);
+  const accessToken = await getAccessToken(passportUser); // This will now handle refresh
   const afterTimestamp = Math.floor(raceStartDate.getTime() / 1000);
   const beforeTimestamp = Math.floor(raceEndDate.getTime() / 1000);
 
   console.debug(
-    `Workspaceing Strava activities for user ${passportUser.stravaId} between ${raceStartDate} and ${raceEndDate}`
+    `Fetching Strava activities for user ${passportUser.stravaId} between ${raceStartDate} and ${raceEndDate}`
   );
 
   try {
-    const response = await stravaApi.get("/athlete/activities", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      params: {
-        before: beforeTimestamp,
-        after: afterTimestamp,
-        per_page: 50,
-      },
-    });
+    const response = await axios.get(
+      `${config.STRAVA_API_BASE_URL}/athlete/activities`,
+      {
+        // Corrected to use axios with full URL
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: {
+          before: beforeTimestamp,
+          after: afterTimestamp,
+          per_page: 50,
+        },
+      }
+    );
 
     if (!response.data) {
       console.info(
@@ -85,9 +238,13 @@ export const getUserActivities = async (
       err.response?.data || err.message
     );
     if (err.response?.status === 401) {
+      // This could be due to the new token (if refreshed) still being invalid for some reason,
+      // or if getAccessToken itself threw a 401 (e.g. refresh failed and needs re-auth)
       throw createError(
         401,
-        "Strava authentication error. Please re-authenticate."
+        err.message.includes("re-authenticate")
+          ? err.message
+          : "Strava authentication error after attempting refresh. Please re-authenticate."
       );
     }
     throw createError(
@@ -104,7 +261,7 @@ export const processAndSaveActivityResults = async (
   raceId,
   stravaActivityId
 ) => {
-  const accessToken = await getAccessToken(passportUser);
+  const accessToken = await getAccessToken(passportUser); // This will now handle refresh
   const userStravaId = passportUser.stravaId;
 
   const user = await User.findById(passportUser.id);
@@ -128,18 +285,30 @@ export const processAndSaveActivityResults = async (
   let activityDetails;
   try {
     console.debug(
-      `Workspaceing detailed Strava activity ${stravaActivityId} for user ${userStravaId}`
+      `Fetching detailed Strava activity ${stravaActivityId} for user ${userStravaId}`
     );
-    const response = await stravaApi.get(`/activities/${stravaActivityId}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      params: { include_all_efforts: true },
-    });
+    const response = await axios.get(
+      `${config.STRAVA_API_BASE_URL}/activities/${stravaActivityId}`,
+      {
+        // Corrected
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { include_all_efforts: true },
+      }
+    );
     activityDetails = response.data;
   } catch (err) {
     console.error(
       `Error fetching Strava activity details for activity ${stravaActivityId}:`,
       err.response?.data || err.message
     );
+    if (err.response?.status === 401) {
+      throw createError(
+        401,
+        err.message.includes("re-authenticate")
+          ? err.message
+          : "Strava authentication error after attempting refresh. Please re-authenticate."
+      );
+    }
     throw createError(
       err.response?.status || 500,
       `Failed to fetch activity details from Strava: ${
